@@ -219,6 +219,19 @@ Vertex uses the `@` symbol for versioning:
 
 All differences handled automatically by ReqLLM.
 
+## Gemini Assistant Prefill
+
+Gemini 3.5 Flash-Lite and Gemini 3.6 or later models cannot end a text or object
+request with a non-empty assistant turn. Older models retain prefill support.
+This also applies to streaming requests. The local error is `ReqLLM.Error.Invalid.Parameter`.
+ReqLLM checks the context before it sends the request. For `stream_text/3`, this
+error is inside the streaming error tuple. System messages do not count as
+conversation turns. Empty turns do not change the last non-empty turn.
+
+Append a user message to request a response. For a tool call, append the tool
+result before you continue the conversation. This validation applies only to
+Gemini models on Vertex AI.
+
 ## Resources
 
 - [Vertex AI Documentation](https://cloud.google.com/vertex-ai/docs)
