@@ -88,6 +88,37 @@ defmodule ReqLLM.Providers.Anthropic.AdapterHelpers do
 
   defp normalize_entry({key, value}), do: {to_string(key), normalize_schema(value)}
 
+  @doc """
+  Add `output_config.format` for an `:object` request in `:json_schema` mode,
+  keeping any other `output_config` field such as `effort`.
+  """
+  def maybe_add_output_format(body, :object, :json_schema, opts) do
+    compiled_schema = Keyword.fetch!(opts, :compiled_schema)
+
+    format = %{
+      type: "json_schema",
+      schema: strict_json_schema(compiled_schema)
+    }
+
+    Map.update(body, :output_config, %{format: format}, &Map.put(&1, :format, format))
+  end
+
+  def maybe_add_output_format(body, _operation, _mode, _opts), do: body
+
+  @doc """
+  Set the response object from the message text, where `:json_schema` mode
+  returns it instead of a `structured_output` tool call.
+  """
+  def extract_object_from_text(response, opts) do
+    object =
+      case ReqLLM.JSON.decode(ReqLLM.Response.text(response), opts) do
+        {:ok, decoded} -> decoded
+        _ -> nil
+      end
+
+    %{response | object: object}
+  end
+
   defp get_opt(opts, key) when is_list(opts), do: Keyword.get(opts, key)
   defp get_opt(opts, key) when is_map(opts), do: Map.get(opts, key)
   defp get_opt(_opts, _key), do: nil
@@ -255,16 +286,36 @@ defmodule ReqLLM.Providers.Anthropic.AdapterHelpers do
   defp strip_property({name, schema}), do: {name, strip_constraints_recursive(schema)}
 
   @doc """
-  Apply the object-level requirements strict decoding mandates: every property
-  is marked required and `additionalProperties` is set to `false`.
+  Apply the object-level requirements strict decoding mandates to every object
+  in the schema: every property is marked required and `additionalProperties`
+  is set to `false`.
   """
-  def enforce_strict_schema_requirements(
-        %{"type" => "object", "properties" => properties} = schema
-      ) do
+  def enforce_strict_schema_requirements(%{} = schema) when not is_struct(schema) do
+    schema
+    |> Map.new(&enforce_entry/1)
+    |> require_every_property()
+  end
+
+  def enforce_strict_schema_requirements(list) when is_list(list),
+    do: Enum.map(list, &enforce_strict_schema_requirements/1)
+
+  def enforce_strict_schema_requirements(value), do: value
+
+  defp enforce_entry({"properties", %Jason.OrderedObject{values: values} = properties}),
+    do: {"properties", %{properties | values: Enum.map(values, &enforce_property/1)}}
+
+  defp enforce_entry({"properties", %{} = properties}),
+    do: {"properties", Map.new(properties, &enforce_property/1)}
+
+  defp enforce_entry({key, value}), do: {key, enforce_strict_schema_requirements(value)}
+
+  defp enforce_property({name, schema}), do: {name, enforce_strict_schema_requirements(schema)}
+
+  defp require_every_property(%{"type" => "object", "properties" => properties} = schema) do
     schema
     |> Map.put("required", Enum.map(properties, &elem(&1, 0)))
     |> Map.put("additionalProperties", false)
   end
 
-  def enforce_strict_schema_requirements(schema), do: schema
+  defp require_every_property(schema), do: schema
 end
