@@ -70,7 +70,10 @@ defmodule ReqLLM.Providers.Anthropic.Response do
       response_model: model_name,
       usage: usage,
       finish_reason: finish_reason,
-      provider_meta: Map.drop(data, ["id", "model", "content", "usage"])
+      provider_meta:
+        data
+        |> Map.drop(["id", "model", "content", "usage"])
+        |> Map.merge(pricing_metadata(Map.get(data, "usage")))
     }
 
     ReqLLM.Providers.Anthropic.ResponseBuilder.build_buffered_response(
@@ -98,7 +101,7 @@ defmodule ReqLLM.Providers.Anthropic.Response do
           []
         else
           usage = parse_usage(usage_data)
-          [ReqLLM.StreamChunk.meta(%{usage: usage})]
+          [ReqLLM.StreamChunk.meta(put_pricing_metadata(%{usage: usage}, usage_data))]
         end
 
       %{"type" => "content_block_delta", "index" => index, "delta" => delta} ->
@@ -429,6 +432,8 @@ defmodule ReqLLM.Providers.Anthropic.Response do
       reasoning_tokens: reasoning_tokens
     }
 
+    base = maybe_put_usage_reported(base, usage)
+
     base =
       case Map.get(usage, "cache_creation") do
         %{} = groups -> Map.put(base, :cache_creation, groups)
@@ -448,8 +453,20 @@ defmodule ReqLLM.Providers.Anthropic.Response do
       output_tokens: 0,
       total_tokens: 0,
       cached_tokens: 0,
-      reasoning_tokens: 0
+      reasoning_tokens: 0,
+      usage_reported: %{input: false, output: false}
     }
+
+  defp maybe_put_usage_reported(base, usage) do
+    reported = %{
+      input: not is_nil(Map.get(usage, "input_tokens")),
+      output: not is_nil(Map.get(usage, "output_tokens"))
+    }
+
+    if reported.input and reported.output,
+      do: base,
+      else: Map.put(base, :usage_reported, reported)
+  end
 
   defp anthropic_tool_usage(usage) when is_map(usage) do
     server_tool_use = Map.get(usage, "server_tool_use", %{})
@@ -501,6 +518,7 @@ defmodule ReqLLM.Providers.Anthropic.Response do
       %{}
       |> maybe_put_meta(:response_id, Map.get(message, "id"))
       |> maybe_put_meta(:response_model, Map.get(message, "model"))
+      |> put_pricing_metadata(Map.get(message, "usage"))
 
     case Map.get(message, "usage", %{}) do
       usage_data when usage_data == %{} -> []
@@ -532,8 +550,25 @@ defmodule ReqLLM.Providers.Anthropic.Response do
     if raw_usage == %{} do
       chunks
     else
-      usage_chunk = ReqLLM.StreamChunk.meta(%{usage: parse_usage(raw_usage)})
+      usage_chunk =
+        ReqLLM.StreamChunk.meta(%{
+          usage: parse_usage(raw_usage),
+          provider_meta: pricing_metadata(raw_usage)
+        })
+
       [usage_chunk | chunks]
+    end
+  end
+
+  defp pricing_metadata(usage) when is_map(usage),
+    do: Map.take(usage, ["inference_geo", "speed", "service_tier"])
+
+  defp pricing_metadata(_), do: %{}
+
+  defp put_pricing_metadata(meta, usage) do
+    case pricing_metadata(usage) do
+      facts when map_size(facts) == 0 -> meta
+      facts -> Map.put(meta, :provider_meta, facts)
     end
   end
 

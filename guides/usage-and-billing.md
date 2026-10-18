@@ -78,6 +78,23 @@ processing. Other hosts require an independently confirmed processing fact.
 Standalone compact and Decisions endpoints do not establish a Responses
 tariff.
 
+For Anthropic, ReqLLM derives the API from the Messages endpoint and uses
+returned `inference_geo`, `speed`, and `service_tier` usage fields for both
+normal and streaming calls. These returned facts replace conflicting values
+in `pricing_context`. The facts remain available in `response.provider_meta`
+and streaming provider metadata.
+
+For requests sent directly to `api.anthropic.com/v1/messages`, the encoded
+request body can also confirm standard speed when speed is omitted or set
+to `"standard"`. A request for `"fast"` requires returned speed or independent
+context. Anthropic can [process some fast requests at standard speed](https://platform.claude.com/docs/en/build-with-claude/fast-mode#checking-which-speed-was-used).
+ReqLLM does not infer a global region or standard gateway speed. Missing facts
+can be supplied through independently confirmed `pricing_context`.
+Invalid returned facts, including `inference_geo: "not_available"`, do not
+confirm a price and clear the corresponding caller value. A call stays
+unpriced if a required tariff condition cannot be resolved or required token
+counts are missing. Explicit zero token counts can establish a zero cost.
+
 For other providers, supply the actual billed service tier after any provider
 fallback. `"auto"` does not confirm one. Time-dependent tariffs require an explicit
 `pricing_period: "peak"` or `"off_peak"` chosen by the caller from provider
