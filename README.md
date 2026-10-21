@@ -19,49 +19,94 @@ LLM APIs are inconsistent. ReqLLM provides a unified, idiomatic Elixir interface
 **Unified architecture:**
 
 - **High-level API** – Vercel AI SDK-inspired functions (`generate_text/3`, `stream_text/3`, `generate_object/4` and more) that normalize requests and responses across providers.
-- **Provider transports** – Req powers request/response calls; Finch powers streaming. Provider callbacks translate model metadata, options, bodies, and responses behind the same public API.
+- **Provider transports** – Req powers request/response calls; Finch powers streaming. Dedicated provider modules or the shared catalog gateway translate model metadata, options, bodies, and responses behind the same public API.
 
-**Model Support Snapshot**
+### Provider Integrations and Model Support
 
-ReqLLM currently exposes **1,205 models across 21 implemented provider integrations** from [LLMDB](https://llmcatalog.dev), the model catalog maintained through `llm_db`. Counting the cataloged-but-not-separate `google_vertex_anthropic` namespace, the registry contains **1,218 models across 22 provider namespaces**.
+ReqLLM gets model metadata from [LLMDB](https://llmcatalog.dev). It sends a
+request through one of two integration paths:
 
-That breadth extends well beyond chat: ReqLLM tracks **92 non-text operation models** across embedding, image generation, text-to-speech, transcription, rerank, and OCR APIs. The fixture suite currently contains **622 unique recorded model specs**, giving ReqLLM a compatibility ledger for text and multi-modal provider behavior.
+- **Dedicated provider module**: A registered ReqLLM module owns the provider's
+  authentication, routes, wire format, and special behavior.
+- **Shared catalog gateway**: The provider has no dedicated ReqLLM module.
+  LLMDB supplies an execution contract, and ReqLLM sends the request through
+  its shared OpenAI Chat Completions adapter.
 
-| Provider | ID | Catalog models | Operation surface | Recorded specs | Guide |
-|---|---|---:|---|---:|---|
-| [Alibaba Cloud Bailian](https://llmcatalog.dev/?providers=alibaba) | `alibaba` | 50 | text, OCR 1, transcription 1 | 0 | — |
-| [Alibaba Cloud Bailian (China)](https://llmcatalog.dev/?providers=alibaba_cn) | `alibaba_cn` | 82 | text, OCR 1, transcription 1 | 0 | — |
-| [Amazon Bedrock](https://llmcatalog.dev/?providers=amazon_bedrock) | `amazon_bedrock` | 92 | text, embedding 3 | 7 | [Guide](guides/amazon_bedrock.md) |
-| [Anthropic](https://llmcatalog.dev/?providers=anthropic) | `anthropic` | 11 | text | 11 | [Guide](guides/anthropic.md) |
-| [Azure OpenAI](https://llmcatalog.dev/?providers=azure) | `azure` | 103 | text, embedding 6, image 3 | 26 | [Guide](guides/azure.md) |
-| [Cerebras](https://llmcatalog.dev/?providers=cerebras) | `cerebras` | 5 | text | 2 | [Guide](guides/cerebras.md) |
-| [Cohere](https://llmcatalog.dev/?providers=cohere) | `cohere` | 17 | text, rerank 5 | 5 | — |
-| [ElevenLabs](https://llmcatalog.dev/?providers=elevenlabs) | `elevenlabs` | 4 | speech 4 | 4 | — |
-| [Fireworks AI](https://llmcatalog.dev/?providers=fireworks_ai) | `fireworks_ai` | 12 | text | 12 | [Guide](guides/fireworks_ai.md) |
-| [Google Gemini](https://llmcatalog.dev/?providers=google) | `google` | 50 | text, embedding 2, image 8 | 24 | [Guide](guides/google.md) |
-| [Google Vertex AI](https://llmcatalog.dev/?providers=google_vertex) | `google_vertex` | 40 | text | 11 | [Guide](guides/google_vertex.md) |
-| [Groq](https://llmcatalog.dev/?providers=groq) | `groq` | 18 | text, speech 2, transcription 2 | 11 | [Guide](guides/groq.md) |
-| [Meta Model API](https://llmcatalog.dev/?providers=meta) | `meta` | 1 | text | 1 | [Guide](guides/meta.md) |
-| [MiniMax](https://llmcatalog.dev/?providers=minimax) | `minimax` | 6 | text, video 2 | 6 | — |
-| [Moonshot AI](https://llmcatalog.dev/?providers=moonshotai) | `moonshotai` | 1 | text | 1 | [Guide](guides/moonshot_ai.md) |
-| [OpenAI](https://llmcatalog.dev/?providers=openai) | `openai` | 86 | text, embedding 3, image 5, speech 6, transcription 7 | 64 | [Guide](guides/openai.md) |
-| [OpenRouter](https://llmcatalog.dev/?providers=openrouter) | `openrouter` | 364 | text, embedding 25, image 5 | 234 | [Guide](guides/openrouter.md) |
-| [Venice](https://llmcatalog.dev/?providers=venice) | `venice` | 67 | text | 67 | — |
-| [xAI](https://llmcatalog.dev/?providers=xai) | `xai` | 26 | text, image 3 | 21 | [Guide](guides/xai.md) |
-| [Z.AI](https://llmcatalog.dev/?providers=zai) | `zai` | 13 | text | 2 | [Guide](guides/zai.md) |
-| [Z.AI Coder](https://llmcatalog.dev/?providers=zai_coder) | `zai_coder` | 5 | text | 1 | [Guide](guides/zai_coder.md) |
-| [Z.AI Coding Plan](https://llmcatalog.dev/?providers=zai_coding_plan) | `zai_coding_plan` | 5 | text | 4 | — |
-| [Zenmux](https://llmcatalog.dev/?providers=zenmux) | `zenmux` | 149 | text, image 2 | 107 | [Guide](guides/zenmux.md) |
+These paths describe request routing. They do not describe support quality. A
+model can be in LLMDB before ReqLLM has verified its API behavior. Support tiers
+such as **First-class** describe fixture evidence for an exact model and
+operation. See [Model Support Evidence](guides/model-support.md) for that detail.
 
-StepFun chat, speech, and transcription use the `stepfun_ai` (Global) and
-`stepfun` (China) providers. See the [StepFun guide](guides/stepfun.md).
+Community contributions can add either integration path. After a
+provider-specific module is merged, it is a dedicated provider module. The
+origin of the contribution does not change its integration type.
 
-Reflection AI text, reasoning, tools, and JSON output use the `reflection`
-provider. See the [Reflection guide](guides/reflection.md).
+#### Hosted APIs With Dedicated Modules
 
-Local inference is also supported through [Ollama](guides/ollama.md) and
-[LM Studio](guides/lmstudio.md), using model identifiers from your local server
-without requiring LLMDB catalog entries.
+Each provider in this table has a registered module in ReqLLM. Main operations
+show the module's broad scope. The selected model can support fewer operations.
+
+| Provider | ID | Main operations | Guide |
+|---|---|---|---|
+| [Alibaba Cloud Bailian](https://llmcatalog.dev/?providers=alibaba) | `alibaba` | text, OCR, transcription | — |
+| [Alibaba Cloud Bailian (China)](https://llmcatalog.dev/?providers=alibaba_cn) | `alibaba_cn` | text, OCR, transcription | — |
+| [Amazon Bedrock](https://llmcatalog.dev/?providers=amazon_bedrock) | `amazon_bedrock` | text, embedding | [Guide](guides/amazon_bedrock.md) |
+| [Anthropic](https://llmcatalog.dev/?providers=anthropic) | `anthropic` | text | [Guide](guides/anthropic.md) |
+| Atlas Cloud | `atlascloud` | text | — |
+| [Azure OpenAI](https://llmcatalog.dev/?providers=azure) | `azure` | text, embedding, image | [Guide](guides/azure.md) |
+| [Cerebras](https://llmcatalog.dev/?providers=cerebras) | `cerebras` | text | [Guide](guides/cerebras.md) |
+| [Cohere](https://llmcatalog.dev/?providers=cohere) | `cohere` | text, rerank | — |
+| [DeepSeek](https://llmcatalog.dev/?providers=deepseek) | `deepseek` | text | [Guide](guides/deepseek.md) |
+| [ElevenLabs](https://llmcatalog.dev/?providers=elevenlabs) | `elevenlabs` | speech | — |
+| [Fireworks AI](https://llmcatalog.dev/?providers=fireworks_ai) | `fireworks_ai` | text | [Guide](guides/fireworks_ai.md) |
+| [GitHub Copilot](https://llmcatalog.dev/?providers=github_copilot) | `github_copilot` | text | [Guide](guides/github_copilot.md) |
+| [Google Gemini](https://llmcatalog.dev/?providers=google) | `google` | text, embedding, image | [Guide](guides/google.md) |
+| [Google Vertex AI](https://llmcatalog.dev/?providers=google_vertex) | `google_vertex` | text | [Guide](guides/google_vertex.md) |
+| [Groq](https://llmcatalog.dev/?providers=groq) | `groq` | text, speech, transcription | [Guide](guides/groq.md) |
+| [Meta Model API](https://llmcatalog.dev/?providers=meta) | `meta` | text | [Guide](guides/meta.md) |
+| [MiniMax](https://llmcatalog.dev/?providers=minimax) | `minimax` | text, video | — |
+| [Mistral](https://llmcatalog.dev/?providers=mistral) | `mistral` | text, embedding | — |
+| [Moonshot AI](https://llmcatalog.dev/?providers=moonshotai) | `moonshotai` | text | [Guide](guides/moonshot_ai.md) |
+| [NEAR AI Cloud](https://llmcatalog.dev/?providers=nearai) | `nearai` | text | [Guide](guides/nearai.md) |
+| [OpenAI](https://llmcatalog.dev/?providers=openai) | `openai` | text, embedding, image, speech, transcription | [Guide](guides/openai.md) |
+| OpenAI Codex | `openai_codex` | text | [Guide](guides/openai.md#chatgpt-codex-backend-openai_codex) |
+| [OpenRouter](https://llmcatalog.dev/?providers=openrouter) | `openrouter` | text, embedding, image | [Guide](guides/openrouter.md) |
+| Reflection AI | `reflection` | text | [Guide](guides/reflection.md) |
+| [StepFun China](https://llmcatalog.dev/?providers=stepfun) | `stepfun` | text, speech, transcription | [Guide](guides/stepfun.md) |
+| [StepFun Global](https://llmcatalog.dev/?providers=stepfun_ai) | `stepfun_ai` | text, speech, transcription | [Guide](guides/stepfun.md) |
+| [TypeSafe](https://llmcatalog.dev/?providers=typesafe) | `typesafe` | evaluation | [Example](#evaluation-models) |
+| [Venice](https://llmcatalog.dev/?providers=venice) | `venice` | text | — |
+| [xAI](https://llmcatalog.dev/?providers=xai) | `xai` | text, image | [Guide](guides/xai.md) |
+| [Z.AI](https://llmcatalog.dev/?providers=zai) | `zai` | text | [Guide](guides/zai.md) |
+| [Z.AI Coder](https://llmcatalog.dev/?providers=zai_coder) | `zai_coder` | text | [Guide](guides/zai_coder.md) |
+| [Z.AI Coding Plan](https://llmcatalog.dev/?providers=zai_coding_plan) | `zai_coding_plan` | text | — |
+| [Zenmux](https://llmcatalog.dev/?providers=zenmux) | `zenmux` | text, image | [Guide](guides/zenmux.md) |
+
+#### Shared Catalog Gateway: No Dedicated Module
+
+This path is for hosted APIs that use plain OpenAI Chat Completions with bearer
+authentication. LLMDB must supply the base URL, route, wire protocol, and
+authentication contract. ReqLLM then uses `ReqLLM.Providers.CatalogGateway`.
+A dedicated provider module always takes priority when one is registered.
+
+| Provider | ID | Main operations | Evidence |
+|---|---|---|---|
+| [LLM API](https://app.llmapi.ai/?utm_source=ff0a247d-c8ab-4f19-a982-c4ff915da268) | `llmapi` | text, structured output, streaming | [Recorded fixtures](guides/model-support.md#llmapi) |
+
+Support on this path is limited to the LLMDB execution contract and the recorded
+fixture evidence. A complete model spec can also use this path before the model
+is in the catalog. See [Model Specs](guides/model-specs.md#openai-chat-completions-providers-without-a-reqllm-module).
+
+#### Local and Self-Hosted Runtimes
+
+These runtimes have dedicated ReqLLM modules. Their model IDs come from the
+user's server, so the models do not need LLMDB catalog entries.
+
+| Runtime | ID | Main operations | Guide |
+|---|---|---|---|
+| Ollama | `ollama` | text, structured output | [Guide](guides/ollama.md) |
+| LM Studio | `lmstudio` | text, embedding | [Guide](guides/lmstudio.md) |
+| vLLM | `vllm` | text | — |
 
 \* _Streaming uses Finch directly due to known Req limitations with SSE responses._
 
@@ -315,7 +360,8 @@ include a built-in model-selection policy.
 ## Features
 
 - **Provider-agnostic model registry**
-  - 21 implemented providers / 1,205 models sourced from [LLMDB](https://llmcatalog.dev) via the `llm_db` dependency
+  - Model metadata and execution contracts sourced from [LLMDB](https://llmcatalog.dev) through the `llm_db` dependency
+  - Dedicated provider modules for provider-specific behavior, plus a shared catalog gateway for eligible OpenAI-compatible APIs
   - Text, embedding, image generation, speech, transcription, rerank and OCR operation metadata
   - Cost, context length, modality, capability and deprecation metadata included
 
@@ -416,6 +462,10 @@ config :req_llm, load_dotenv: false
 
 ReqLLM can call models that are not in LLMDB yet. This is the recommended advanced
 workflow for local development, debugging new releases, and custom provider setups.
+
+Model lookup and request routing are separate. A complete model spec uses its
+registered provider module when one exists. Otherwise, an eligible OpenAI Chat
+Completions contract can use the shared catalog gateway.
 
 See the [Model Specs](guides/model-specs.md) guide for the full explanation of
 string specs, exact dated releases, `%LLMDB.Model{}` structs, and the full explicit
@@ -615,9 +665,18 @@ text = ReqLLM.StreamResponse.text(response)
 
 ## Adding a Provider
 
-ReqLLM uses OpenAI Chat Completions as the baseline API standard. Providers that support this format (like Groq, OpenRouter, xAI) require minimal overrides using the `ReqLLM.Provider.DSL`. Model metadata is automatically synced from [LLMDB](https://llmcatalog.dev).
+Choose the integration path from the API behavior:
 
-Providers implement the `ReqLLM.Provider` behavior with functions like `encode_body/1`, `decode_response/1`, and optional parameter translation via `translate_options/3`.
+- Add a dedicated provider module when the API needs special authentication,
+  headers, routes, options, request encoding, or response decoding.
+- Use the shared catalog gateway when the API uses plain OpenAI Chat
+  Completions with bearer authentication and LLMDB has a complete execution
+  contract.
+- Add a dedicated module for a local runtime when ReqLLM must handle local
+  model IDs, optional authentication, or runtime-specific options.
+
+Dedicated modules implement the `ReqLLM.Provider` behavior. LLMDB owns shared
+provider and model metadata for both paths.
 
 See the [Adding a Provider Guide](guides/adding_a_provider.md) for detailed implementation instructions.
 
@@ -667,7 +726,7 @@ This approach gives you full control over the Req pipeline, allowing you to add 
 - [Mix Tasks](guides/mix-tasks.md) – model sync, compatibility testing, code generation
 - [Fixture Testing](guides/fixture-testing.md) – model validation and supported models
 - [Adding a Provider](guides/adding_a_provider.md) – extend with new providers
-- Provider Guides: [Anthropic](guides/anthropic.md), [OpenAI](guides/openai.md), [Google](guides/google.md), [Google Vertex](guides/google_vertex.md), [xAI](guides/xai.md), [Groq](guides/groq.md), [OpenRouter](guides/openrouter.md), [Amazon Bedrock](guides/amazon_bedrock.md), [Azure](guides/azure.md), [Cerebras](guides/cerebras.md), [Fireworks AI](guides/fireworks_ai.md), [Meta](guides/meta.md), [Moonshot AI](guides/moonshot_ai.md), [Reflection AI](guides/reflection.md), [Z.AI](guides/zai.md), [Z.AI Coder](guides/zai_coder.md), [Zenmux](guides/zenmux.md)
+- Provider Guides: [Amazon Bedrock](guides/amazon_bedrock.md), [Anthropic](guides/anthropic.md), [Azure](guides/azure.md), [Cerebras](guides/cerebras.md), [DeepSeek](guides/deepseek.md), [Fireworks AI](guides/fireworks_ai.md), [GitHub Copilot](guides/github_copilot.md), [Google](guides/google.md), [Google Vertex](guides/google_vertex.md), [Groq](guides/groq.md), [LM Studio](guides/lmstudio.md), [Meta](guides/meta.md), [Moonshot AI](guides/moonshot_ai.md), [NEAR AI](guides/nearai.md), [Ollama](guides/ollama.md), [OpenAI](guides/openai.md), [OpenRouter](guides/openrouter.md), [Reflection AI](guides/reflection.md), [StepFun](guides/stepfun.md), [xAI](guides/xai.md), [Z.AI](guides/zai.md), [Z.AI Coder](guides/zai_coder.md), [Zenmux](guides/zenmux.md)
 
 ## Roadmap & Status
 
@@ -677,9 +736,16 @@ If you run into anything or have suggestions, please open an issue or PR.
 
 ### Test Coverage & Quality Commitment
 
-ReqLLM uses fixture-backed compatibility tests as a practical map of provider behavior. The current suite includes **160 passing model-compat entries** across 13 providers and **622 unique recorded fixture model specs** across text, streaming, tool calling, structured output, embeddings, image generation, speech, transcription, rerank, and OCR.
+ReqLLM tracks support evidence for **600+ models** across text, streaming, tool
+calling, structured output, embeddings, image generation, speech,
+transcription, rerank, and OCR. This count is from the October 9, 2026 evidence
+snapshot.
 
-Catalog support and fixture-verified coverage are tracked separately on purpose: provider catalogs move quickly, account access varies, and some modalities need specialized tests. ReqLLM makes that state visible through `mix mc "*:*"` and lets you narrow checks by provider or operation type when you need to validate the exact models your application uses.
+Catalog support and fixture-verified coverage are tracked separately on purpose:
+provider catalogs move quickly, account access varies, and some modalities need
+specialized tests. See [Model Support Evidence](guides/model-support.md) for the
+dated status of each exact model and operation. You can also use
+`mix req_llm.model_support` or `mix mc "*:*"` to inspect current evidence.
 
 **We welcome bug reports and feedback!** If you encounter issues with any supported model, please open a GitHub issue with details. The more feedback we receive, the stronger the code will be!
 
@@ -715,12 +781,20 @@ LIVE=true mix test --only "provider:anthropic"
 
 ## Contributing
 
-We welcome contributions! ReqLLM uses a fixture-based testing approach to ensure reliability across all providers.
+Provider APIs change continuously. Models, wire formats, and edge cases can
+shift without notice, so ReqLLM depends on builders who find those changes in
+real applications. Bug reports and patches are welcome, even when the first
+version is small or unpolished. Maintainers can help refine the implementation.
+
+When a change fixes provider behavior, include a focused regression test. If
+provider access permits, record the smallest live API fixture that proves the
+behavior. ReqLLM can then replay that real response without credentials and
+keep the edge case covered.
 
 Please read [CONTRIBUTING.md](CONTRIBUTING.md) for detailed guidelines on:
 
 - Core library contributions
-- Adding new providers
+- Adding dedicated provider modules or shared catalog gateway support
 - Extending provider features
 - Testing requirements and fixture generation
 - Code quality standards
@@ -729,9 +803,9 @@ Quick start:
 
 1. Fork the repository
 2. Create a feature branch
-3. Add tests with fixtures for your changes
-4. Run `mix test` and `mix quality` to ensure standards
-5. Verify `mix mc "*:*"` passes for affected providers
+3. Add a focused test that reproduces the behavior
+4. Record a live fixture for provider API changes
+5. Run the relevant tests and `mix quality`
 6. Submit a pull request
 
 ## License
