@@ -112,6 +112,12 @@ user's server, so the models do not need LLMDB catalog entries.
 
 ## Installation
 
+> **Security update:** ReqLLM 1.29.0 fixes
+> [GHSA-6vww-5m28-f26v](https://github.com/agentjido/req_llm/security/advisories/GHSA-6vww-5m28-f26v).
+> Versions 1.9.0 through 1.28.0 did not verify TLS certificates for affected
+> WebSocket sessions. Users of OpenAI Responses WebSocket, Realtime, or Codex
+> WebSocket sessions should upgrade. HTTP streaming is not affected.
+
 ### Igniter Installation (Recommended)
 
 The fastest way to get started is with [Igniter](https://hex.pm/packages/igniter):
@@ -127,7 +133,7 @@ Add `req_llm` to your list of dependencies in `mix.exs`:
 ```elixir
 def deps do
   [
-    {:req_llm, "~> 1.6"}
+    {:req_llm, "~> 1.29"}
   ]
 end
 ```
