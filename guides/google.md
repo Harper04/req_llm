@@ -177,6 +177,11 @@ Google grounding uses `unit: "query"` to track the number of search queries perf
 
 All differences handled automatically by ReqLLM.
 
+For tool-only assistant turns, ReqLLM emits function-call parts without adding an
+empty text part. Existing thinking, nonempty text, and tool-call signatures are
+retained. Append the matching tool results before continuing the conversation.
+This also applies to Gemini on Google Vertex AI.
+
 ## Assistant Prefill
 
 Gemini 3.5 Flash-Lite and Gemini 3.6 or later models cannot end a text or object
