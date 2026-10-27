@@ -129,9 +129,9 @@ defmodule ReqLLM.Providers.Google do
         "Enable Google Search grounding - allows model to search the web. Set to %{enable: true} for modern models, or %{dynamic_retrieval: %{mode: \"MODE_DYNAMIC\", dynamic_threshold: 0.7}} for Gemini 1.5 legacy support. Requires v1beta (default)."
     ],
     google_url_context: [
-      type: {:or, [:boolean, :map]},
+      type: :boolean,
       doc:
-        "Enable URL context grounding - allows model to fetch and use content from specific URLs. Pass `true` or a map with options. Requires v1beta (default)."
+        "Enable URL context grounding - allows model to fetch and use content from specific URLs. Requires v1beta (default)."
     ],
     dimensions: [
       type: :pos_integer,
@@ -830,7 +830,11 @@ defmodule ReqLLM.Providers.Google do
     {provider_opts, rest} = Keyword.pop(opts, :provider_options, [])
 
     {effort, provider_opts} = Keyword.pop(provider_opts, :reasoning_effort)
-    provider_opts = normalize_response_modalities(provider_opts)
+
+    provider_opts =
+      provider_opts
+      |> normalize_response_modalities()
+      |> normalize_url_context()
 
     provider_opts =
       case {effort, gemini_3_or_later?(model)} do
@@ -863,6 +867,16 @@ defmodule ReqLLM.Providers.Google do
       end
 
     {Keyword.put(rest, :provider_options, provider_opts), []}
+  end
+
+  defp normalize_url_context(provider_opts) do
+    case Keyword.fetch(provider_opts, :google_url_context) do
+      {:ok, value} when is_map(value) and map_size(value) == 0 ->
+        Keyword.put(provider_opts, :google_url_context, true)
+
+      _ ->
+        provider_opts
+    end
   end
 
   defp normalize_response_modalities(provider_opts) do
@@ -1926,7 +1940,6 @@ defmodule ReqLLM.Providers.Google do
   defp build_grounding_tools(_), do: []
 
   defp build_url_context_tools(true), do: [%{url_context: %{}}]
-  defp build_url_context_tools(%{} = opts), do: [%{url_context: opts}]
   defp build_url_context_tools(_), do: []
 
   defp extract_grounding_metadata(%{"candidates" => [candidate | _]}) do

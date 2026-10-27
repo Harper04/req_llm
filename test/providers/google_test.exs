@@ -1131,27 +1131,24 @@ defmodule ReqLLM.Providers.GoogleTest do
       assert tool["url_context"] == %{}
     end
 
-    test "encode_body includes url_context tool with map options" do
-      {:ok, model} = ReqLLM.model("google:gemini-2.0-flash")
-      context = context_fixture()
+    test "options pipeline accepts an empty map and rejects a non-empty map" do
+      model = ReqLLM.model!("google:gemini-2.5-flash")
 
-      mock_request = %Req.Request{
-        options: [
-          context: context,
-          model: model.model,
-          stream: false,
-          google_url_context: %{some_option: "value"}
-        ]
-      }
+      for opts <- [
+            [google_url_context: %{}],
+            [provider_options: [google_url_context: %{}]]
+          ] do
+        validated = ReqLLM.Provider.Options.process!(Google, :chat, model, opts)
 
-      updated_request = Google.encode_body(mock_request)
-      decoded = ReqLLM.Test.Helpers.json_body(updated_request)
+        assert validated[:google_url_context] == true
+        assert validated[:provider_options][:google_url_context] == true
+      end
 
-      assert is_list(decoded["tools"])
-      assert length(decoded["tools"]) == 1
-      [tool] = decoded["tools"]
-      assert Map.has_key?(tool, "url_context")
-      assert tool["url_context"] == %{"some_option" => "value"}
+      assert_raise NimbleOptions.ValidationError, fn ->
+        ReqLLM.Provider.Options.process!(Google, :chat, model,
+          provider_options: [google_url_context: %{some_option: "value"}]
+        )
+      end
     end
 
     test "encode_body combines url_context with user tools" do
