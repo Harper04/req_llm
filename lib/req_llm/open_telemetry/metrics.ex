@@ -261,7 +261,7 @@ defmodule ReqLLM.OpenTelemetry.Metrics do
       end
 
     [
-      {"input", MapAccess.get(tokens, :input) || MapAccess.get(tokens, :input_tokens)},
+      {"input", Attributes.input_tokens(usage)},
       {"output", MapAccess.get(tokens, :output) || MapAccess.get(tokens, :output_tokens)}
     ]
     |> Enum.reject(fn {_type, value} -> is_nil(value) end)

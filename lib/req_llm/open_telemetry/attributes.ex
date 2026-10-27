@@ -32,6 +32,19 @@ defmodule ReqLLM.OpenTelemetry.Attributes do
   alias ReqLLM.OpenTelemetry.SemConv
   alias ReqLLM.Response
 
+  @cache_read_keys [
+    :cache_read_tokens,
+    :cached_tokens,
+    :cached_input,
+    :cache_read_input_tokens
+  ]
+  @cache_creation_keys [
+    :cache_write_tokens,
+    :cache_creation_tokens,
+    :cache_creation_input_tokens,
+    :cache_creation
+  ]
+
   @doc """
   Builds GenAI span start attributes from request lifecycle metadata.
 
@@ -211,22 +224,54 @@ defmodule ReqLLM.OpenTelemetry.Attributes do
   defp usage(nil), do: %{}
 
   defp usage(usage) when is_map(usage) do
-    tokens =
-      case MapAccess.get(usage, :tokens) do
-        tokens when is_map(tokens) -> tokens
-        _ -> usage
-      end
+    tokens = usage_tokens(usage)
 
     %{
-      "gen_ai.usage.input_tokens" => token_value(tokens, [:input, :input_tokens]),
+      "gen_ai.usage.input_tokens" => input_tokens(usage),
       "gen_ai.usage.output_tokens" => token_value(tokens, [:output, :output_tokens]),
-      "gen_ai.usage.cache_read.input_tokens" =>
-        token_value(tokens, [:cached_input, :cache_read_input_tokens]),
-      "gen_ai.usage.cache_creation.input_tokens" =>
-        token_value(tokens, [:cache_creation, :cache_creation_input_tokens]),
+      "gen_ai.usage.cache_read.input_tokens" => token_value(tokens, @cache_read_keys),
+      "gen_ai.usage.cache_creation.input_tokens" => token_value(tokens, @cache_creation_keys),
       "gen_ai.usage.reasoning.output_tokens" => reasoning_tokens(usage),
       "gen_ai.usage.cost" => total_cost(usage)
     }
+  end
+
+  @doc """
+  Returns the `gen_ai.usage.input_tokens` count of a usage map: all input
+  tokens, cache reads and writes included, as the GenAI semantic conventions
+  define it. ReqLLM usage keeps the provider's counting rules, so when
+  `input_includes_cached` is `false` (Anthropic, Amazon Bedrock) the cache
+  counters are added to the reported input.
+  """
+  @spec input_tokens(map()) :: term()
+  def input_tokens(usage) when is_map(usage) do
+    tokens = usage_tokens(usage)
+    input = token_value(tokens, [:input, :input_tokens])
+
+    if is_integer(input) and input_excludes_cached?(usage, tokens) do
+      input + token_count(tokens, @cache_read_keys) + token_count(tokens, @cache_creation_keys)
+    else
+      input
+    end
+  end
+
+  defp usage_tokens(usage) do
+    case MapAccess.get(usage, :tokens) do
+      tokens when is_map(tokens) -> tokens
+      _ -> usage
+    end
+  end
+
+  defp input_excludes_cached?(usage, tokens) do
+    MapAccess.get_raw(usage, :input_includes_cached) == false or
+      MapAccess.get_raw(tokens, :input_includes_cached) == false
+  end
+
+  defp token_count(tokens, keys) do
+    case token_value(tokens, keys) do
+      count when is_integer(count) -> count
+      _ -> 0
+    end
   end
 
   @doc """

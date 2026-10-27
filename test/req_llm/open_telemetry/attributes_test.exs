@@ -135,6 +135,53 @@ defmodule ReqLLM.OpenTelemetry.AttributesTest do
       assert attributes["gen_ai.usage.reasoning.output_tokens"] == 64
     end
 
+    test "counts cache reads and writes into input tokens when the provider reports them apart" do
+      usage =
+        ReqLLM.Usage.normalize(%{
+          input_tokens: 3,
+          output_tokens: 250,
+          cache_read_tokens: 32_000,
+          cache_write_tokens: 4_600,
+          input_includes_cached: false
+        })
+
+      attributes = Attributes.terminal(%{operation: :chat, finish_reason: :stop, usage: usage})
+
+      assert attributes["gen_ai.usage.input_tokens"] == 36_603
+      assert attributes["gen_ai.usage.cache_read.input_tokens"] == 32_000
+      assert attributes["gen_ai.usage.cache_creation.input_tokens"] == 4_600
+    end
+
+    test "counts canonical cache read and write token fields into input tokens" do
+      usage = %{
+        input_tokens: 3,
+        output_tokens: 250,
+        cache_read_tokens: 32_000,
+        cache_write_tokens: 4_600,
+        input_includes_cached: false
+      }
+
+      attributes = Attributes.terminal(%{operation: :chat, finish_reason: :stop, usage: usage})
+
+      assert attributes["gen_ai.usage.input_tokens"] == 36_603
+      assert attributes["gen_ai.usage.cache_read.input_tokens"] == 32_000
+      assert attributes["gen_ai.usage.cache_creation.input_tokens"] == 4_600
+    end
+
+    test "keeps input tokens as reported when they already include the cache" do
+      usage =
+        ReqLLM.Usage.normalize(%{
+          prompt_tokens: 36_603,
+          completion_tokens: 250,
+          prompt_tokens_details: %{cached_tokens: 32_000}
+        })
+
+      attributes = Attributes.terminal(%{operation: :chat, finish_reason: :stop, usage: usage})
+
+      assert attributes["gen_ai.usage.input_tokens"] == 36_603
+      assert attributes["gen_ai.usage.cache_read.input_tokens"] == 32_000
+    end
+
     test "emits embeddings dimension count for embedding ops" do
       attributes =
         Attributes.terminal(%{

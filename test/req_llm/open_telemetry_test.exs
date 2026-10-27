@@ -841,6 +841,55 @@ defmodule ReqLLM.OpenTelemetryTest do
       assert by_name(records, "gen_ai.client.operation.time_per_output_chunk") == []
     end
 
+    test "counts cache reads and writes into the input token histogram" do
+      handler_id = "req-llm-otel-#{System.unique_integer([:positive])}"
+      request_id = "req-#{System.unique_integer([:positive])}"
+
+      assert :ok =
+               OpenTelemetry.attach(handler_id, adapter: FakeMetricsAdapter, test_pid: self())
+
+      on_exit(fn -> OpenTelemetry.detach(handler_id) end)
+
+      model = marker_model()
+
+      usage =
+        ReqLLM.Usage.normalize(%{
+          input_tokens: 3,
+          output_tokens: 250,
+          cache_read_tokens: 32_000,
+          cache_write_tokens: 4_600,
+          input_includes_cached: false
+        })
+
+      :telemetry.execute(
+        [:req_llm, :request, :start],
+        %{system_time: System.system_time()},
+        %{request_id: request_id, operation: :chat, provider: :anthropic, model: model}
+      )
+
+      :telemetry.execute(
+        [:req_llm, :request, :stop],
+        %{duration: millisecond_to_native(750), system_time: System.system_time()},
+        %{
+          request_id: request_id,
+          operation: :chat,
+          provider: :anthropic,
+          model: model,
+          mode: :sync,
+          finish_reason: :stop,
+          usage: usage
+        }
+      )
+
+      token_counts =
+        model.id
+        |> drain_records()
+        |> by_name("gen_ai.client.token.usage")
+        |> Map.new(&{&1.attributes["gen_ai.token.type"], &1.value})
+
+      assert token_counts == %{"input" => 36_603, "output" => 250}
+    end
+
     test "emits TTFC + TPOC and gen_ai.response.time_to_first_chunk attribute on streaming stop" do
       handler_id = "req-llm-otel-#{System.unique_integer([:positive])}"
       request_id = "req-#{System.unique_integer([:positive])}"
