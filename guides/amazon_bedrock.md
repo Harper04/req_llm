@@ -163,7 +163,7 @@ Passed via `:provider_options` keyword:
 
 - **Type**: `"/v1"` | `"/openai/v1"`
 - **Purpose**: Base path of the Chat Completions route on bedrock-mantle; each [model card](https://docs.aws.amazon.com/bedrock/latest/userguide/model-cards.html) states it
-- **Default**: `/openai/v1` for `openai.gpt-5*`, `google.gemma-4*` and `xai.*` models, `/v1` for every other family
+- **Default**: `/openai/v1` for `openai.*` (except `openai.gpt-oss*`), `google.gemma-4*` and `xai.*` models, `/v1` for every other family
 - **Example**: `provider_options: [endpoint: :mantle, mantle_base_path: "/openai/v1"]` for a model not covered by the default
 
 ### `additional_model_request_fields`
@@ -193,8 +193,8 @@ Passed via `:provider_options` keyword:
 
 ### `service_tier`
 
-- **Type**: `"priority"` | `"default"` | `"flex"` | `"reserved"`
-- **Purpose**: [Service tier](https://docs.aws.amazon.com/bedrock/latest/userguide/service-tiers-inference.html) the request runs on; omitted when `"default"`
+- **Type**: String
+- **Purpose**: [Service tier](https://docs.aws.amazon.com/bedrock/latest/userguide/service-tiers-inference.html) the request runs on, such as `"flex"` or `"ultrafast"`; omitted when `"default"`
 - **Example**: `provider_options: [service_tier: "flex"]`
 
 ### `anthropic_structured_output_mode`

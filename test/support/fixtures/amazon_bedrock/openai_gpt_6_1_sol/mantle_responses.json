@@ -1,0 +1,169 @@
+{
+  "captured_at": "2026-10-28T20:30:06.048134Z",
+  "model_spec": "amazon_bedrock:openai.gpt-6.1-sol",
+  "provider": "amazon_bedrock",
+  "request": {
+    "body": {
+      "b64": "eyJpbmNsdWRlIjpbInJlYXNvbmluZy5lbmNyeXB0ZWRfY29udGVudCJdLCJpbnB1dCI6W3siY29udGVudCI6W3sidGV4dCI6IlNheSBoaSBpbiB0d28gd29yZHMuIiwidHlwZSI6ImlucHV0X3RleHQifV0sInJvbGUiOiJ1c2VyIn1dLCJtYXhfb3V0cHV0X3Rva2VucyI6NjQsIm1vZGVsIjoib3BlbmFpLmdwdC02LjEtc29sIiwic2VydmljZV90aWVyIjoiZGVmYXVsdCIsInN0b3JlIjpmYWxzZSwic3RyZWFtIjpmYWxzZX0="
+    },
+    "canonical_json": {
+      "include": [
+        "reasoning.encrypted_content"
+      ],
+      "input": [
+        {
+          "content": [
+            {
+              "text": "Say hi in two words.",
+              "type": "input_text"
+            }
+          ],
+          "role": "user"
+        }
+      ],
+      "max_output_tokens": 64,
+      "model": "openai.gpt-6.1-sol",
+      "service_tier": "default",
+      "store": false,
+      "stream": false
+    },
+    "headers": {
+      "authorization": "[REDACTED:authorization]",
+      "content-type": [
+        "application/json"
+      ],
+      "host": [
+        "bedrock-mantle.us-east-1.api.aws"
+      ],
+      "user-agent": [
+        "req/0.7.5"
+      ],
+      "x-amz-content-sha256": [
+        "80cee4af7444cb8fcbb1b5841f18f3415b5c9fbed29c212a00f4761f2e62621d"
+      ],
+      "x-amz-date": [
+        "20261028T203004Z"
+      ],
+      "x-amz-security-token": [
+        "[REDACTED:x-amz-security-token]"
+      ]
+    },
+    "method": "post",
+    "url": "https://bedrock-mantle.us-east-1.api.aws/openai/v1/responses"
+  },
+  "response": {
+    "body": {
+      "safety_identifier": null,
+      "store": false,
+      "error": null,
+      "created_at": 1793219405,
+      "presence_penalty": 0.0,
+      "status": "completed",
+      "max_tool_calls": null,
+      "instructions": null,
+      "billing": {
+        "payer": "developer"
+      },
+      "prompt_cache_retention": "in_memory",
+      "completed_at": 1793219406,
+      "temperature": 1.0,
+      "text": {
+        "format": {
+          "type": "text"
+        },
+        "verbosity": "medium"
+      },
+      "parallel_tool_calls": true,
+      "tool_choice": "auto",
+      "frequency_penalty": 0.0,
+      "top_logprobs": 0,
+      "reasoning": {
+        "context": "all_turns",
+        "effort": "medium",
+        "summary": null
+      },
+      "usage": {
+        "input_tokens": 12,
+        "input_tokens_details": {
+          "cache_write_tokens": 0,
+          "cached_tokens": 0
+        },
+        "output_tokens": 20,
+        "output_tokens_details": {
+          "reasoning_tokens": 11
+        },
+        "total_tokens": 32
+      },
+      "incomplete_details": null,
+      "model": "openai.gpt-6.1-sol",
+      "truncation": "disabled",
+      "metadata": {},
+      "service_tier": "default",
+      "id": "resp_6xcrk3m3ibuektnipdoqegvcorzh54t334mwikey2gawpn2lvptq",
+      "top_p": 0.98,
+      "user": null,
+      "prompt_cache_key": null,
+      "moderation": null,
+      "object": "response",
+      "background": false,
+      "previous_response_id": null,
+      "max_output_tokens": 64,
+      "output": [
+        {
+          "content": [],
+          "encrypted_content": "rsn_rru6BQHgUc/VWS5vRIAlHwIFeH02rFahQVoOjhmXPoR4ToI+m5XT7N2iXfi7ynnQzi7LAF8AAQAVYXdzLWNyeXB0by1wdWJsaWMta2V5AERBaS80SmRxYVFabnR3b2ZuNGltV2RrbG9ROTlZb3dOQnBaMXVTSXlFWnZGM01tbWVUeFAxb0tkVGRabGM4aC93M2c9PQABABFhd3Mta21zLWhpZXJhcmNoeQAKYmVybS1zdG9yZQBcKBaEb+nxBpcNUIESVudWxxu8hh7EFSO3vxBJzwTyexPQO0PepR8jRQ3zVYTCZinW4YoIfKHXLi3Znjj/sUJgcFkJqWttPAXix1l71dCQ6p3jw/5uDqy2854+rfsCAAAQACQeNB+/vIerA3UrjZ533qx9Lai3xg1XJmZGrTCAgmh+5KEqAC9QRxHpIc5sBhQbQf////8AAAABAAAAAAAAAAAAAAABAAAA9Od6f/EgHtLnmY2DHJ845dc6J3J/w/vJoCQTHniymVeSWuC+2wSeLQqrmpdXDci9FnNUvjJwoKtxW0ZHf8DFb4er1mctbjiQiTveeHWiHHgIPGKMG/PfI5lXtdCg9enA2T21bZDMKHDypCfxAEvqRbFWSLsLPeCp/AOfghpr156aJQINbSWE+PCmPX01fvFnU5JTOQTtgqNn71EMR1c2tk8Cf7ESiI1fgslP2LIpY5WbOd0AJn+VX3SWEM+u08NIyZkzQ0pfn+zYVfzn8B1x+k446l8z4uTDW2KCdfd7H1mGIvOaGXGQqaACnOey1IPSl5TMNLdVv6XJKvMmyvLRyFUQwHKiAGcwZQIxALvbUwCJ1ww85lS61ghTRN/NZIUTMoCOMHAXPV9ojO4QPr0YtKTLJxBXz977PpBHugIwG9d842kCUX7XRNxq/44z4zFN9tyTWK4Z6klh+q32d6XNvrmB9dO/U1l+zSR6gWSc",
+          "id": "rs_d05e2bc593a55e478bada9af72f1689f",
+          "summary": [],
+          "type": "reasoning"
+        },
+        {
+          "content": [
+            {
+              "annotations": [],
+              "logprobs": [],
+              "text": "Hi there!",
+              "type": "output_text"
+            }
+          ],
+          "id": "msg_4566c7f0b6aa50099f2005d69565e8c0",
+          "phase": "final_answer",
+          "role": "assistant",
+          "status": "completed",
+          "type": "message"
+        }
+      ],
+      "tools": []
+    },
+    "headers": {
+      "access-control-allow-origin": [
+        "*"
+      ],
+      "access-control-expose-headers": [
+        "x-amzn-requestid,x-request-id,date,x-amzn-usage-reservation-quota,x-amzn-usage-reservation-remaining-quota,x-amzn-usage-reservation-spillover,x-amzn-gateway-arn,x-amzn-gateway-limit-name,x-amzn-gateway-limit-unit,x-amzn-gateway-limit,x-amzn-gateway-limit-remaining,x-amzn-gateway-limit-used-percent,x-amzn-gateway-limit-refill,x-amzn-gateway-limit-reset-at,retry-after,x-codex-primary-used-percent,x-codex-primary-window-minutes,x-codex-primary-reset-at,anthropic-ratelimit-unified-status,anthropic-ratelimit-unified-reset,anthropic-ratelimit-unified-representative-claim,anthropic-ratelimit-unified-overage-status,anthropic-ratelimit-unified-overage-reset,anthropic-ratelimit-unified-overage-utilization,anthropic-ratelimit-unified-overage-surpassed-threshold"
+      ],
+      "connection": [
+        "keep-alive"
+      ],
+      "content-length": [
+        "2314"
+      ],
+      "content-type": [
+        "application/json"
+      ],
+      "date": [
+        "Wed, 28 Oct 2026 20:30:06 GMT"
+      ],
+      "vary": [
+        "origin, access-control-request-method, access-control-request-headers"
+      ],
+      "x-amzn-requestid": [
+        "req_hr7hzkypbyouetpiau3jvcbq6ahucq6amhb7t66z4nx6szo454qq"
+      ],
+      "x-request-id": [
+        "req_hr7hzkypbyouetpiau3jvcbq6ahucq6amhb7t66z4nx6szo454qq"
+      ]
+    },
+    "status": 200
+  },
+  "streaming": false
+}

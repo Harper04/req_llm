@@ -1708,6 +1708,30 @@ defmodule ReqLLM.Providers.AmazonBedrockTest do
       end
     end
 
+    test "routes GPT-6 models on /openai/v1", %{context: context, opts: opts} do
+      for id <- ["openai.gpt-6.1-sol", "openai.gpt-6-luna"] do
+        {:ok, model} = ReqLLM.model(%{provider: :amazon_bedrock, id: id})
+        {:ok, request} = AmazonBedrock.prepare_request(:chat, model, context, opts)
+
+        assert request.url.path == "/openai/v1/responses"
+        assert %{"model" => ^id} = Jason.decode!(request.body)
+
+        {:ok, finch_request} = AmazonBedrock.attach_stream(model, context, opts, ReqLLM.Finch)
+        assert finch_request.path == "/openai/v1/responses"
+      end
+    end
+
+    test "sends any service tier through to Mantle", %{context: context, opts: opts} do
+      {:ok, model} = ReqLLM.model(%{provider: :amazon_bedrock, id: "openai.gpt-6.1-sol"})
+      opts = Keyword.put(opts, :service_tier, "ultrafast")
+
+      {:ok, request} = AmazonBedrock.prepare_request(:chat, model, context, opts)
+      assert Jason.decode!(request.body)["service_tier"] == "ultrafast"
+
+      {:ok, stream} = AmazonBedrock.attach_stream(model, context, opts, ReqLLM.Finch)
+      assert Jason.decode!(stream.body)["service_tier"] == "ultrafast"
+    end
+
     test "routes GPT-5 Responses bodies on both Mantle transports", %{
       context: context,
       opts: opts,

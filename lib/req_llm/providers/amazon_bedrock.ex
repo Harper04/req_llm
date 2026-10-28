@@ -166,7 +166,7 @@ defmodule ReqLLM.Providers.AmazonBedrock do
     mantle_base_path: [
       type: {:in, ["/v1", "/openai/v1"]},
       doc:
-        "Base path of the OpenAI-compatible routes on bedrock-mantle. Default: `/openai/v1` for GPT-5, Gemma 4 and Grok models, `/v1` for every other family. Ignored for Claude and on bedrock-runtime"
+        "Base path of the OpenAI-compatible routes on bedrock-mantle. Default: `/openai/v1` for OpenAI GPT (not gpt-oss), Gemma 4 and Grok models, `/v1` for every other family. Ignored for Claude and on bedrock-runtime"
     ],
     store: [
       type: :boolean,
@@ -257,7 +257,7 @@ defmodule ReqLLM.Providers.AmazonBedrock do
       """
     ],
     service_tier: [
-      type: {:in, ["priority", "default", "flex", "reserved"]},
+      type: :string,
       default: "default",
       doc:
         "[Service tier](https://docs.aws.amazon.com/bedrock/latest/userguide/service-tiers-inference.html) the request runs on. Omitted when \"default\""
@@ -1230,14 +1230,16 @@ defmodule ReqLLM.Providers.AmazonBedrock do
 
   # Each model card states its bedrock-mantle base path:
   # https://docs.aws.amazon.com/bedrock/latest/userguide/model-cards.html
-  @mantle_openai_v1_prefixes ["openai.gpt-5", "google.gemma-4", "xai."]
-
   defp mantle_base_path(model_id, opts) do
     provider_option(opts, :mantle_base_path) ||
-      if String.starts_with?(model_id, @mantle_openai_v1_prefixes),
-        do: "/openai/v1",
-        else: "/v1"
+      if mantle_openai_v1_model?(model_id), do: "/openai/v1", else: "/v1"
   end
+
+  defp mantle_openai_v1_model?("openai.gpt-oss" <> _rest), do: false
+  defp mantle_openai_v1_model?("openai." <> _rest), do: true
+  defp mantle_openai_v1_model?("google.gemma-4" <> _rest), do: true
+  defp mantle_openai_v1_model?("xai." <> _rest), do: true
+  defp mantle_openai_v1_model?(_model_id), do: false
 
   defp route_headers(:mantle, "anthropic", opts) do
     project_header("anthropic-workspace-id", opts) ++
