@@ -50,7 +50,6 @@ defmodule ReqLLM.Providers.AmazonBedrock.Anthropic do
     case get_in(opts, [:provider_options, :endpoint]) do
       :mantle ->
         body
-        |> ensure_no_output_format_on_mantle!()
         |> Map.put(:model, model_id)
         |> AdapterHelpers.maybe_add_param(:stream, opts[:stream])
 
@@ -105,14 +104,6 @@ defmodule ReqLLM.Providers.AmazonBedrock.Anthropic do
     |> maybe_add_tools(opts)
     |> Anthropic.maybe_apply_prompt_caching(PromptCache.to_anthropic_opts(opts))
   end
-
-  defp ensure_no_output_format_on_mantle!(%{output_config: %{format: _}}) do
-    raise ReqLLM.Error.Invalid.Parameter,
-      parameter:
-        "anthropic_structured_output_mode: :json_schema is not supported on the bedrock-mantle endpoint"
-  end
-
-  defp ensure_no_output_format_on_mantle!(body), do: body
 
   defp maybe_add_output_effort(body, opts) do
     case get_in(opts, [:provider_options, :additional_model_request_fields, :output_config]) do

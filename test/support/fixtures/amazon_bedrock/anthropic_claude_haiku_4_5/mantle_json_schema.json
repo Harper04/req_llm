@@ -1,0 +1,135 @@
+{
+  "captured_at": "2026-10-28T19:59:22.629803Z",
+  "model_spec": "amazon_bedrock:anthropic.claude-haiku-4-5",
+  "provider": "amazon_bedrock",
+  "request": {
+    "body": {
+      "b64": "eyJtYXhfdG9rZW5zIjoyNTYsIm1lc3NhZ2VzIjpbeyJjb250ZW50IjoiRGVzY3JpYmUgTHlvbiB3aXRoIHRocmVlIGxhbmRtYXJrcy4iLCJyb2xlIjoidXNlciJ9XSwibW9kZWwiOiJhbnRocm9waWMuY2xhdWRlLWhhaWt1LTQtNSIsIm91dHB1dF9jb25maWciOnsiZm9ybWF0Ijp7InNjaGVtYSI6eyJhZGRpdGlvbmFsUHJvcGVydGllcyI6ZmFsc2UsInByb3BlcnRpZXMiOnsiY291bnRyeSI6eyJ0eXBlIjoic3RyaW5nIn0sImxhbmRtYXJrcyI6eyJpdGVtcyI6eyJ0eXBlIjoic3RyaW5nIn0sInR5cGUiOiJhcnJheSJ9LCJuYW1lIjp7InR5cGUiOiJzdHJpbmcifX0sInJlcXVpcmVkIjpbIm5hbWUiLCJjb3VudHJ5IiwibGFuZG1hcmtzIl0sInR5cGUiOiJvYmplY3QifSwidHlwZSI6Impzb25fc2NoZW1hIn19LCJzdHJlYW0iOmZhbHNlfQ=="
+    },
+    "canonical_json": {
+      "max_tokens": 256,
+      "messages": [
+        {
+          "content": "Describe Lyon with three landmarks.",
+          "role": "user"
+        }
+      ],
+      "model": "anthropic.claude-haiku-4-5",
+      "output_config": {
+        "format": {
+          "schema": {
+            "additionalProperties": false,
+            "properties": {
+              "country": {
+                "type": "string"
+              },
+              "landmarks": {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              "name": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "name",
+              "country",
+              "landmarks"
+            ],
+            "type": "object"
+          },
+          "type": "json_schema"
+        }
+      },
+      "stream": false
+    },
+    "headers": {
+      "anthropic-version": [
+        "2023-06-01"
+      ],
+      "authorization": "[REDACTED:authorization]",
+      "content-type": [
+        "application/json"
+      ],
+      "host": [
+        "bedrock-mantle.eu-west-1.api.aws"
+      ],
+      "user-agent": [
+        "req/0.7.5"
+      ],
+      "x-amz-content-sha256": [
+        "cf20dbc9fe1ce3a2dab46a28039197e410461c9592f9d0ff084d9ece989bb619"
+      ],
+      "x-amz-date": [
+        "20261028T195920Z"
+      ],
+      "x-amz-security-token": [
+        "[REDACTED:x-amz-security-token]"
+      ]
+    },
+    "method": "post",
+    "url": "https://bedrock-mantle.eu-west-1.api.aws/anthropic/v1/messages"
+  },
+  "response": {
+    "body": {
+      "container": null,
+      "content": [
+        {
+          "text": "{\"name\": \"Lyon\", \"country\": \"France\", \"landmarks\": [\"Basilica of Notre-Dame de Fourvière\", \"Roman Theaters of Fourvière\", \"Confluence Museum\"]}",
+          "type": "text"
+        }
+      ],
+      "id": "msg_bdrk_d5fxt3ac2l75ar52v5lfiyatkqhdrakyng5sh3bcf34atz3famca",
+      "model": "claude-haiku-4-5-20251001",
+      "role": "assistant",
+      "stop_details": null,
+      "stop_reason": "end_turn",
+      "stop_sequence": null,
+      "type": "message",
+      "usage": {
+        "cache_creation": {
+          "ephemeral_1h_input_tokens": 0,
+          "ephemeral_5m_input_tokens": 0
+        },
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0,
+        "input_tokens": 216,
+        "output_tokens": 48,
+        "service_tier": "standard"
+      }
+    },
+    "headers": {
+      "access-control-allow-origin": [
+        "*"
+      ],
+      "access-control-expose-headers": [
+        "x-amzn-requestid,x-request-id,date,x-amzn-usage-reservation-quota,x-amzn-usage-reservation-remaining-quota,x-amzn-usage-reservation-spillover,x-amzn-gateway-arn,x-amzn-gateway-limit-name,x-amzn-gateway-limit-unit,x-amzn-gateway-limit,x-amzn-gateway-limit-remaining,x-amzn-gateway-limit-used-percent,x-amzn-gateway-limit-refill,x-amzn-gateway-limit-reset-at,retry-after,x-codex-primary-used-percent,x-codex-primary-window-minutes,x-codex-primary-reset-at,anthropic-ratelimit-unified-status,anthropic-ratelimit-unified-reset,anthropic-ratelimit-unified-representative-claim,anthropic-ratelimit-unified-overage-status,anthropic-ratelimit-unified-overage-reset,anthropic-ratelimit-unified-overage-utilization,anthropic-ratelimit-unified-overage-surpassed-threshold"
+      ],
+      "connection": [
+        "keep-alive"
+      ],
+      "content-length": [
+        "637"
+      ],
+      "content-type": [
+        "application/json"
+      ],
+      "date": [
+        "Wed, 28 Oct 2026 19:59:22 GMT"
+      ],
+      "vary": [
+        "origin, access-control-request-method, access-control-request-headers"
+      ],
+      "x-amzn-requestid": [
+        "req_fufgbxqxyyu2h5tduhfpfoh5pjhjklm5ilukbwv7gurfzic7v4xq"
+      ],
+      "x-request-id": [
+        "req_fufgbxqxyyu2h5tduhfpfoh5pjhjklm5ilukbwv7gurfzic7v4xq"
+      ]
+    },
+    "status": 200
+  },
+  "streaming": false
+}

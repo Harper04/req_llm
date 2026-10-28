@@ -249,11 +249,11 @@ defmodule ReqLLM.Providers.AmazonBedrock do
       Structured output strategy for Claude `:object` generation:
       - `:auto` (default) - best-effort tool calling
       - `:json_schema` - grammar-constrained decoding via `outputConfig.textFormat` on Converse
-        and `output_config.format` on InvokeModel
+        and `output_config.format` on InvokeModel and the bedrock-mantle Messages API
 
-      `:json_schema` fails before the request is sent on the bedrock-mantle endpoint and on
-      Converse with cited documents, which Bedrock does not combine with structured output.
-      Defined tools stay callable, so the model can answer with a tool call and no object.
+      `:json_schema` fails before the request is sent on Converse with cited documents, which
+      Bedrock does not combine with structured output. Defined tools stay callable, so the
+      model can answer with a tool call and no object.
       """
     ],
     service_tier: [

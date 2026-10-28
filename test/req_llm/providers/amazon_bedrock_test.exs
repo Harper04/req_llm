@@ -2286,19 +2286,22 @@ defmodule ReqLLM.Providers.AmazonBedrockTest do
       refute Map.has_key?(body, "outputConfig")
     end
 
-    test "is refused on the bedrock-mantle endpoint", %{
-      claude: model,
-      compiled_schema: compiled_schema,
-      context: context
-    } do
+    test "sends the schema as output_config.format on the bedrock-mantle Messages API, buffered and streamed",
+         %{claude: model, compiled_schema: compiled_schema, context: context} do
       opts = json_schema_opts(compiled_schema, endpoint: :mantle)
+      {:ok, request} = AmazonBedrock.prepare_request(:object, model, context, opts)
+      {:ok, stream} = AmazonBedrock.attach_stream(model, context, opts, ReqLLM.Finch)
 
-      assert_raise ReqLLM.Error.Invalid.Parameter, ~r/bedrock-mantle/, fn ->
-        AmazonBedrock.prepare_request(:object, model, context, opts)
+      assert request.url.path == "/anthropic/v1/messages"
+
+      for body <- [request.body, stream.body] do
+        body = Jason.decode!(body, objects: :ordered_objects)
+        format = body["output_config"]["format"]
+
+        assert format["type"] == "json_schema"
+        assert Enum.map(format["schema"]["properties"], &elem(&1, 0)) == ["type", "text"]
+        assert body["tools"] == nil
       end
-
-      assert {:error, {:bedrock_stream_build_failed, %ReqLLM.Error.Invalid.Parameter{}}} =
-               AmazonBedrock.attach_stream(model, context, opts, ReqLLM.Finch)
     end
 
     test "is refused with cited documents on Converse, the only API that sends citations", %{

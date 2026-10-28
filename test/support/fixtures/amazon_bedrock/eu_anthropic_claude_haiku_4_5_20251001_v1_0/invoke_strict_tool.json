@@ -1,0 +1,142 @@
+{
+  "captured_at": "2026-10-28T19:59:36.247680Z",
+  "model_spec": "amazon_bedrock:eu.anthropic.claude-haiku-4-5-20251001-v1:0",
+  "provider": "amazon_bedrock",
+  "request": {
+    "body": {
+      "b64": "eyJhbnRocm9waWNfdmVyc2lvbiI6ImJlZHJvY2stMjAyMy0wNS0zMSIsIm1heF90b2tlbnMiOjI1NiwibWVzc2FnZXMiOlt7ImNvbnRlbnQiOiJXaGF0J3MgdGhlIHdlYXRoZXIgaW4gTHlvbiwgaW4gQ2Vsc2l1cz8iLCJyb2xlIjoidXNlciJ9XSwidG9vbF9jaG9pY2UiOnsibmFtZSI6ImdldF93ZWF0aGVyIiwidHlwZSI6InRvb2wifSwidG9vbHMiOlt7ImRlc2NyaXB0aW9uIjoiR2V0IHRoZSBjdXJyZW50IHdlYXRoZXIgZm9yIGEgbG9jYXRpb24iLCJpbnB1dF9zY2hlbWEiOnsiYWRkaXRpb25hbFByb3BlcnRpZXMiOmZhbHNlLCJwcm9wZXJ0aWVzIjp7ImxvY2F0aW9uIjp7ImRlc2NyaXB0aW9uIjoiQ2l0eSBhbmQgY291bnRyeSIsInR5cGUiOiJzdHJpbmcifSwidW5pdCI6eyJkZXNjcmlwdGlvbiI6IlRlbXBlcmF0dXJlIHVuaXQiLCJlbnVtIjpbImNlbHNpdXMiLCJmYWhyZW5oZWl0Il0sInR5cGUiOiJzdHJpbmcifX0sInJlcXVpcmVkIjpbImxvY2F0aW9uIiwidW5pdCJdLCJ0eXBlIjoib2JqZWN0In0sIm5hbWUiOiJnZXRfd2VhdGhlciIsInN0cmljdCI6dHJ1ZX1dfQ=="
+    },
+    "canonical_json": {
+      "anthropic_version": "bedrock-2023-05-31",
+      "max_tokens": 256,
+      "messages": [
+        {
+          "content": "What's the weather in Lyon, in Celsius?",
+          "role": "user"
+        }
+      ],
+      "tool_choice": {
+        "name": "get_weather",
+        "type": "tool"
+      },
+      "tools": [
+        {
+          "description": "Get the current weather for a location",
+          "input_schema": {
+            "additionalProperties": false,
+            "properties": {
+              "location": {
+                "description": "City and country",
+                "type": "string"
+              },
+              "unit": {
+                "description": "Temperature unit",
+                "enum": [
+                  "celsius",
+                  "fahrenheit"
+                ],
+                "type": "string"
+              }
+            },
+            "required": [
+              "location",
+              "unit"
+            ],
+            "type": "object"
+          },
+          "name": "get_weather",
+          "strict": true
+        }
+      ]
+    },
+    "headers": {
+      "authorization": "[REDACTED:authorization]",
+      "content-type": [
+        "application/json"
+      ],
+      "host": [
+        "bedrock-runtime.eu-west-1.amazonaws.com"
+      ],
+      "user-agent": [
+        "req/0.7.5"
+      ],
+      "x-amz-content-sha256": [
+        "699649002914127499d72edc4da1764e32d72607cc2ffb71f72d0e3c45c0ff98"
+      ],
+      "x-amz-date": [
+        "20261028T195924Z"
+      ],
+      "x-amz-security-token": [
+        "[REDACTED:x-amz-security-token]"
+      ]
+    },
+    "method": "post",
+    "url": "https://bedrock-runtime.eu-west-1.amazonaws.com/model/eu.anthropic.claude-haiku-4-5-20251001-v1:0/invoke"
+  },
+  "response": {
+    "body": {
+      "content": [
+        {
+          "id": "toolu_bdrk_01FePx7inK2bLgAYPCN9asbH",
+          "input": {
+            "location": "Lyon, France",
+            "unit": "celsius"
+          },
+          "name": "get_weather",
+          "type": "tool_use"
+        }
+      ],
+      "id": "msg_bdrk_011CgVECTporqUKSrkiK6wt5",
+      "model": "claude-haiku-4-5-20251001",
+      "role": "assistant",
+      "stop_details": null,
+      "stop_reason": "tool_use",
+      "stop_sequence": null,
+      "type": "message",
+      "usage": {
+        "cache_creation": {
+          "ephemeral_1h_input_tokens": 0,
+          "ephemeral_5m_input_tokens": 0
+        },
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0,
+        "input_tokens": 711,
+        "output_tokens": 52
+      }
+    },
+    "headers": {
+      "connection": [
+        "keep-alive"
+      ],
+      "content-length": [
+        "516"
+      ],
+      "content-type": [
+        "application/json"
+      ],
+      "date": [
+        "Wed, 28 Oct 2026 19:59:36 GMT"
+      ],
+      "x-amzn-bedrock-cache-read-input-token-count": [
+        "0"
+      ],
+      "x-amzn-bedrock-cache-write-input-token-count": [
+        "0"
+      ],
+      "x-amzn-bedrock-input-token-count": [
+        "711"
+      ],
+      "x-amzn-bedrock-invocation-latency": [
+        "11389"
+      ],
+      "x-amzn-bedrock-output-token-count": [
+        "52"
+      ],
+      "x-amzn-requestid": [
+        "0fa55b3a-4a9a-4988-9ed9-7b02f73b3225"
+      ]
+    },
+    "status": 200
+  },
+  "streaming": false
+}

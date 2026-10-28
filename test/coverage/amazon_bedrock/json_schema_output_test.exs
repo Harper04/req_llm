@@ -11,6 +11,7 @@ defmodule ReqLLM.Coverage.AmazonBedrock.JsonSchemaOutputTest do
   @moduletag timeout: 180_000
 
   @model "amazon_bedrock:eu.anthropic.claude-haiku-4-5-20251001-v1:0"
+  @mantle_model "amazon_bedrock:anthropic.claude-haiku-4-5"
   @prompt "Describe Lyon with three landmarks."
   @schema [
     name: [type: :string, required: true],
@@ -61,6 +62,18 @@ defmodule ReqLLM.Coverage.AmazonBedrock.JsonSchemaOutputTest do
         @prompt,
         @schema,
         fixture_opts("invoke_json_schema", opts(use_converse: false))
+      )
+
+    assert_city(response)
+  end
+
+  test "answers in the declared order on bedrock-mantle" do
+    {:ok, response} =
+      ReqLLM.generate_object(
+        @mantle_model,
+        @prompt,
+        @schema,
+        fixture_opts("mantle_json_schema", opts(endpoint: :mantle))
       )
 
     assert_city(response)

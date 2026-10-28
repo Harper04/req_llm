@@ -1,0 +1,143 @@
+{
+  "captured_at": "2026-10-28T19:59:42.299031Z",
+  "model_spec": "amazon_bedrock:eu.anthropic.claude-haiku-4-5-20251001-v1:0",
+  "provider": "amazon_bedrock",
+  "request": {
+    "body": {
+      "b64": "eyJpbmZlcmVuY2VDb25maWciOnsibWF4VG9rZW5zIjoyNTZ9LCJtZXNzYWdlcyI6W3siY29udGVudCI6W3sidGV4dCI6IldoYXQncyB0aGUgd2VhdGhlciBpbiBMeW9uLCBpbiBDZWxzaXVzPyJ9XSwicm9sZSI6InVzZXIifV0sInRvb2xDb25maWciOnsidG9vbENob2ljZSI6eyJ0b29sIjp7Im5hbWUiOiJnZXRfd2VhdGhlciJ9fSwidG9vbHMiOlt7InRvb2xTcGVjIjp7ImRlc2NyaXB0aW9uIjoiR2V0IHRoZSBjdXJyZW50IHdlYXRoZXIgZm9yIGEgbG9jYXRpb24iLCJpbnB1dFNjaGVtYSI6eyJqc29uIjp7ImFkZGl0aW9uYWxQcm9wZXJ0aWVzIjpmYWxzZSwicHJvcGVydGllcyI6eyJsb2NhdGlvbiI6eyJkZXNjcmlwdGlvbiI6IkNpdHkgYW5kIGNvdW50cnkiLCJ0eXBlIjoic3RyaW5nIn0sInVuaXQiOnsiZGVzY3JpcHRpb24iOiJUZW1wZXJhdHVyZSB1bml0IiwiZW51bSI6WyJjZWxzaXVzIiwiZmFocmVuaGVpdCJdLCJ0eXBlIjoic3RyaW5nIn19LCJyZXF1aXJlZCI6WyJsb2NhdGlvbiIsInVuaXQiXSwidHlwZSI6Im9iamVjdCJ9fSwibmFtZSI6ImdldF93ZWF0aGVyIiwic3RyaWN0Ijp0cnVlfX1dfX0="
+    },
+    "canonical_json": {
+      "inferenceConfig": {
+        "maxTokens": 256
+      },
+      "messages": [
+        {
+          "content": [
+            {
+              "text": "What's the weather in Lyon, in Celsius?"
+            }
+          ],
+          "role": "user"
+        }
+      ],
+      "toolConfig": {
+        "toolChoice": {
+          "tool": {
+            "name": "get_weather"
+          }
+        },
+        "tools": [
+          {
+            "toolSpec": {
+              "description": "Get the current weather for a location",
+              "inputSchema": {
+                "json": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "location": {
+                      "description": "City and country",
+                      "type": "string"
+                    },
+                    "unit": {
+                      "description": "Temperature unit",
+                      "enum": [
+                        "celsius",
+                        "fahrenheit"
+                      ],
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "location",
+                    "unit"
+                  ],
+                  "type": "object"
+                }
+              },
+              "name": "get_weather",
+              "strict": true
+            }
+          }
+        ]
+      }
+    },
+    "headers": {
+      "authorization": "[REDACTED:authorization]",
+      "content-type": [
+        "application/json"
+      ],
+      "host": [
+        "bedrock-runtime.eu-west-1.amazonaws.com"
+      ],
+      "user-agent": [
+        "req/0.7.5"
+      ],
+      "x-amz-content-sha256": [
+        "aa841582f39cf6ac7e83d2489d80723b80a416290b8436c69607573cdc7a5edc"
+      ],
+      "x-amz-date": [
+        "20261028T195941Z"
+      ],
+      "x-amz-security-token": [
+        "[REDACTED:x-amz-security-token]"
+      ]
+    },
+    "method": "post",
+    "url": "https://bedrock-runtime.eu-west-1.amazonaws.com/model/eu.anthropic.claude-haiku-4-5-20251001-v1:0/converse"
+  },
+  "response": {
+    "body": {
+      "metrics": {
+        "latencyMs": 914
+      },
+      "output": {
+        "message": {
+          "content": [
+            {
+              "toolUse": {
+                "input": {
+                  "location": "Lyon, France",
+                  "unit": "celsius"
+                },
+                "name": "get_weather",
+                "toolUseId": "tooluse_sCrgSfpCHdkhBsiL8Bd6Er",
+                "type": "tool_use"
+              }
+            }
+          ],
+          "role": "assistant"
+        }
+      },
+      "stopReason": "tool_use",
+      "usage": {
+        "cacheReadInputTokenCount": 0,
+        "cacheReadInputTokens": 0,
+        "cacheWriteInputTokenCount": 0,
+        "cacheWriteInputTokens": 0,
+        "inputTokens": 711,
+        "outputTokens": 52,
+        "serverToolUsage": {},
+        "totalTokens": 763
+      }
+    },
+    "headers": {
+      "connection": [
+        "keep-alive"
+      ],
+      "content-length": [
+        "453"
+      ],
+      "content-type": [
+        "application/json"
+      ],
+      "date": [
+        "Wed, 28 Oct 2026 19:59:42 GMT"
+      ],
+      "x-amzn-requestid": [
+        "50a12367-af7c-44c3-89fa-812c0286bac4"
+      ]
+    },
+    "status": 200
+  },
+  "streaming": false
+}

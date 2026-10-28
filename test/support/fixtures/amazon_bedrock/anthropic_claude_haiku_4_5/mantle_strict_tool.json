@@ -1,0 +1,145 @@
+{
+  "captured_at": "2026-10-28T19:59:41.336823Z",
+  "model_spec": "amazon_bedrock:anthropic.claude-haiku-4-5",
+  "provider": "amazon_bedrock",
+  "request": {
+    "body": {
+      "b64": "eyJtYXhfdG9rZW5zIjoyNTYsIm1lc3NhZ2VzIjpbeyJjb250ZW50IjoiV2hhdCdzIHRoZSB3ZWF0aGVyIGluIEx5b24sIGluIENlbHNpdXM/Iiwicm9sZSI6InVzZXIifV0sIm1vZGVsIjoiYW50aHJvcGljLmNsYXVkZS1oYWlrdS00LTUiLCJzdHJlYW0iOmZhbHNlLCJ0b29sX2Nob2ljZSI6eyJuYW1lIjoiZ2V0X3dlYXRoZXIiLCJ0eXBlIjoidG9vbCJ9LCJ0b29scyI6W3siZGVzY3JpcHRpb24iOiJHZXQgdGhlIGN1cnJlbnQgd2VhdGhlciBmb3IgYSBsb2NhdGlvbiIsImlucHV0X3NjaGVtYSI6eyJhZGRpdGlvbmFsUHJvcGVydGllcyI6ZmFsc2UsInByb3BlcnRpZXMiOnsibG9jYXRpb24iOnsiZGVzY3JpcHRpb24iOiJDaXR5IGFuZCBjb3VudHJ5IiwidHlwZSI6InN0cmluZyJ9LCJ1bml0Ijp7ImRlc2NyaXB0aW9uIjoiVGVtcGVyYXR1cmUgdW5pdCIsImVudW0iOlsiY2Vsc2l1cyIsImZhaHJlbmhlaXQiXSwidHlwZSI6InN0cmluZyJ9fSwicmVxdWlyZWQiOlsibG9jYXRpb24iLCJ1bml0Il0sInR5cGUiOiJvYmplY3QifSwibmFtZSI6ImdldF93ZWF0aGVyIiwic3RyaWN0Ijp0cnVlfV19"
+    },
+    "canonical_json": {
+      "max_tokens": 256,
+      "messages": [
+        {
+          "content": "What's the weather in Lyon, in Celsius?",
+          "role": "user"
+        }
+      ],
+      "model": "anthropic.claude-haiku-4-5",
+      "stream": false,
+      "tool_choice": {
+        "name": "get_weather",
+        "type": "tool"
+      },
+      "tools": [
+        {
+          "description": "Get the current weather for a location",
+          "input_schema": {
+            "additionalProperties": false,
+            "properties": {
+              "location": {
+                "description": "City and country",
+                "type": "string"
+              },
+              "unit": {
+                "description": "Temperature unit",
+                "enum": [
+                  "celsius",
+                  "fahrenheit"
+                ],
+                "type": "string"
+              }
+            },
+            "required": [
+              "location",
+              "unit"
+            ],
+            "type": "object"
+          },
+          "name": "get_weather",
+          "strict": true
+        }
+      ]
+    },
+    "headers": {
+      "anthropic-version": [
+        "2023-06-01"
+      ],
+      "authorization": "[REDACTED:authorization]",
+      "content-type": [
+        "application/json"
+      ],
+      "host": [
+        "bedrock-mantle.eu-west-1.api.aws"
+      ],
+      "user-agent": [
+        "req/0.7.5"
+      ],
+      "x-amz-content-sha256": [
+        "7cce905a6e4027279fc2465e40b69a8224e70ca1294159030fa6a8bf6c15dc8d"
+      ],
+      "x-amz-date": [
+        "20261028T195936Z"
+      ],
+      "x-amz-security-token": [
+        "[REDACTED:x-amz-security-token]"
+      ]
+    },
+    "method": "post",
+    "url": "https://bedrock-mantle.eu-west-1.api.aws/anthropic/v1/messages"
+  },
+  "response": {
+    "body": {
+      "container": null,
+      "content": [
+        {
+          "id": "toolu_bdrk_01NXpExLabm9qJW8ajpFPW2x",
+          "input": {
+            "location": "Lyon, France",
+            "unit": "celsius"
+          },
+          "name": "get_weather",
+          "type": "tool_use"
+        }
+      ],
+      "id": "msg_bdrk_d5iwbxrodm4rkjpyz5fvxwoedyqishlaiizvl6hzybozjhot727q",
+      "model": "claude-haiku-4-5-20251001",
+      "role": "assistant",
+      "stop_details": null,
+      "stop_reason": "tool_use",
+      "stop_sequence": null,
+      "type": "message",
+      "usage": {
+        "cache_creation": {
+          "ephemeral_1h_input_tokens": 0,
+          "ephemeral_5m_input_tokens": 0
+        },
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0,
+        "input_tokens": 711,
+        "output_tokens": 52,
+        "service_tier": "standard"
+      }
+    },
+    "headers": {
+      "access-control-allow-origin": [
+        "*"
+      ],
+      "access-control-expose-headers": [
+        "x-amzn-requestid,x-request-id,date,x-amzn-usage-reservation-quota,x-amzn-usage-reservation-remaining-quota,x-amzn-usage-reservation-spillover,x-amzn-gateway-arn,x-amzn-gateway-limit-name,x-amzn-gateway-limit-unit,x-amzn-gateway-limit,x-amzn-gateway-limit-remaining,x-amzn-gateway-limit-used-percent,x-amzn-gateway-limit-refill,x-amzn-gateway-limit-reset-at,retry-after,x-codex-primary-used-percent,x-codex-primary-window-minutes,x-codex-primary-reset-at,anthropic-ratelimit-unified-status,anthropic-ratelimit-unified-reset,anthropic-ratelimit-unified-representative-claim,anthropic-ratelimit-unified-overage-status,anthropic-ratelimit-unified-overage-reset,anthropic-ratelimit-unified-overage-utilization,anthropic-ratelimit-unified-overage-surpassed-threshold"
+      ],
+      "connection": [
+        "keep-alive"
+      ],
+      "content-length": [
+        "587"
+      ],
+      "content-type": [
+        "application/json"
+      ],
+      "date": [
+        "Wed, 28 Oct 2026 19:59:41 GMT"
+      ],
+      "vary": [
+        "origin, access-control-request-method, access-control-request-headers"
+      ],
+      "x-amzn-requestid": [
+        "req_hwvvjjy2ubeueokusrmvtmr3stq7zqo5u7leefc5jjdwscau2ayq"
+      ],
+      "x-request-id": [
+        "req_hwvvjjy2ubeueokusrmvtmr3stq7zqo5u7leefc5jjdwscau2ayq"
+      ]
+    },
+    "status": 200
+  },
+  "streaming": false
+}
