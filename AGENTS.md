@@ -64,6 +64,8 @@ ReqLLM uses structured key/value tags for precise test filtering:
   - `test/release/`: release construction tests.
   - `test/support/`: shared test code and fixtures.
 
+Run `mix test` to include existing top-level tests and Mix task tests in `test/mix/`. Release fixtures remain in `test/fixtures/`.
+
 ### Core Data Structures
 - `ReqLLM.Context` - Conversation history as a collection of messages
 - `ReqLLM.Message` - Single conversation message with multi-modal content support

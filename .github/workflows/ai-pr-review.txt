@@ -33,6 +33,7 @@ env:
     - Use Splode-based error types (ReqLLM.Error.API, .Parse, .Auth).
     - Keep imports minimal; prefer fully qualified module calls.
     - Tests use the canonical v1.x layout: test/req_llm/ (unit and mocked, including providers/), test/integration/ (opt-in integration), test/coverage/ (recorded/live provider coverage), test/contracts/ (extension contracts), test/release/ (release construction), test/support/ (shared test code).
+    - Run `mix test` to include existing top-level tests and Mix task tests in `test/mix/`. Release fixtures remain in `test/fixtures/`.
 
     Review priorities:
     1. Correctness - pattern matching, error handling, provider behavior callbacks
