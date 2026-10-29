@@ -40,6 +40,17 @@ registration, inline model routing, generated identity and schema helpers, and
 the callbacks inherited from `ReqLLM.Provider.Defaults`. A minimal provider
 fixture verifies that optional callbacks remain optional.
 
+The adapter contract suites under `test/req_llm/provider/adapter*_test.exs`
+compare the internal `ReqLLM.Provider.Adapter` with direct V1 callback calls.
+They cover inherited defaults, explicit `use ReqLLM.Provider.Defaults`, bare
+behavior implementations, provider selection and catalog gateway errors,
+stream startup results, and optional callback detection for loaded and unloaded
+modules. Generated request IDs and captured exception stacktraces differ
+between separate calls; the suites compare every other field and test exact
+pass-through of provider-owned request, error, stream, and cancellation values.
+The adapter is an internal seam for the subsequent Runtime migrations, not a
+new provider API. Production call sites remain unchanged until those migrations.
+
 Existing provider defaults and first-party implementations remain covered by
 `test/req_llm/provider/defaults_test.exs`, `test/req_llm/providers_test.exs`, and
 the provider tests under `test/req_llm/providers/`. Live model matrices and recorded
