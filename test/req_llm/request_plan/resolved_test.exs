@@ -62,6 +62,74 @@ defmodule ReqLLM.RequestPlan.ResolvedTest do
     end
   end
 
+  test "preserves typed surface errors for OpenAI and Anthropic chat and object plans" do
+    for {provider, provider_module, protocol} <- [
+          {:openai, Providers.OpenAI, "anthropic_messages"},
+          {:anthropic, Providers.Anthropic, "openai_chat"}
+        ],
+        operation <- [:chat, :object] do
+      model =
+        LLMDB.Model.new!(%{
+          provider: provider,
+          id: "custom-model",
+          extra: %{wire: %{protocol: protocol}}
+        })
+
+      assert {:error, %ReqLLM.Error.Invalid.Parameter{parameter: parameter}} =
+               RequestPlan.from_resolved(model, operation, provider_module, [], :req)
+
+      assert parameter ==
+               "wire protocol #{inspect(protocol)} is invalid for provider #{inspect(provider)}"
+
+      assert {:error, %ReqLLM.Error.Invalid.Parameter{parameter: ^parameter}} =
+               RequestPlan.build(model, operation)
+    end
+  end
+
+  test "preserves WebSocket restrictions for OpenAI Chat Completions and Anthropic Messages" do
+    for {provider, provider_module, protocol, surface_name} <- [
+          {:openai, Providers.OpenAI, "openai_chat", "OpenAI Chat Completions"},
+          {:anthropic, Providers.Anthropic, "anthropic_messages", "Anthropic Messages"}
+        ],
+        operation <- [:chat, :object] do
+      model =
+        LLMDB.Model.new!(%{
+          provider: provider,
+          id: "custom-model",
+          extra: %{wire: %{protocol: protocol}}
+        })
+
+      opts = [stream: true, provider_options: [openai_stream_transport: :websocket]]
+
+      assert {:error, %ReqLLM.Error.Invalid.Parameter{parameter: parameter}} =
+               RequestPlan.from_resolved(model, operation, provider_module, opts, :websocket)
+
+      assert parameter == "WebSocket transport is not supported by #{surface_name}"
+
+      assert {:error, %ReqLLM.Error.Invalid.Parameter{parameter: ^parameter}} =
+               RequestPlan.build(model, operation, opts)
+    end
+  end
+
+  test "retains supported OpenAI Responses WebSocket plans" do
+    model =
+      ReqLLM.model!(%{
+        provider: :openai,
+        id: "custom-model",
+        extra: %{wire: %{protocol: "openai_responses"}}
+      })
+
+    opts = [provider_options: [openai_stream_transport: :websocket], stream: true]
+
+    assert {:ok, plan} =
+             RequestPlan.from_resolved(model, :chat, Providers.OpenAI, opts, :websocket)
+
+    assert plan.surface == :openai_responses
+    assert plan.transport == :websocket
+    assert plan.options == opts
+    assert {:ok, ^plan} = RequestPlan.build(model, :chat, opts)
+  end
+
   test "retains boundary options exactly without merging, sorting, or translating them" do
     model = LLMDB.Model.new!(%{provider: :google, id: "custom-model"})
 

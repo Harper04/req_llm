@@ -124,8 +124,9 @@ defmodule ReqLLM.RequestPlan do
   streams, `:websocket`, or `:in_process`. Options retain their order and values.
 
   OpenAI and Anthropic chat/object operations retain their existing surface
-  resolution. Other routes use `:provider` with the selected provider module as
-  `api_module`; their current callbacks still own endpoint and payload selection.
+  resolution and WebSocket restrictions. Other routes use `:provider` with the
+  selected provider module as `api_module`; their current callbacks still own
+  endpoint and payload selection.
   Single and batch embeddings share `:embedding`. Video submission, polling,
   upload and retrieval use their existing distinct provider operation atoms.
 
@@ -140,7 +141,8 @@ defmodule ReqLLM.RequestPlan do
          :ok <- validate_resolved_operation(operation),
          :ok <- validate_resolved_transport(transport),
          {:ok, surface, api_module, warnings} <-
-           resolve_operation_surface(model, operation, provider_module) do
+           resolve_operation_surface(model, operation, provider_module),
+         :ok <- validate_resolved_surface_transport(surface, transport) do
       {:ok,
        %__MODULE__{
          model: model,
@@ -179,6 +181,11 @@ defmodule ReqLLM.RequestPlan do
 
   defp validate_resolved_transport(transport),
     do: invalid_parameter("unsupported request-plan transport: #{inspect(transport)}")
+
+  defp validate_resolved_surface_transport(:provider, _transport), do: :ok
+
+  defp validate_resolved_surface_transport(surface, transport),
+    do: validate_transport_surface(surface, true, transport)
 
   defp resolve_operation_surface(model, operation, provider_module)
        when operation in [:chat, :object] and
