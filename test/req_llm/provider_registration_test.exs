@@ -32,6 +32,7 @@ defmodule ReqLLM.Test.ProviderRegistrationTest do
 
     script = """
     ExUnit.start(autorun: false)
+    Process.register(self(), :registration_observer)
 
     defmodule OriginalProvider do
       use ReqLLM.Provider,
@@ -51,15 +52,19 @@ defmodule ReqLLM.Test.ProviderRegistrationTest do
       use ExUnit.Case, async: false
 
       test "temporary registration" do
-        assert :ok = ReqLLM.Test.ProviderRegistration.register_provider(
-          :registration_helper_test, TemporaryProvider
-        )
+        assert :ok = ReqLLM.Test.ProviderRegistration.register_provider(TemporaryProvider)
         assert {:ok, TemporaryProvider} = ReqLLM.Providers.get(:registration_helper_test)
+        send(:registration_observer, :temporary_registered)
         #{test_result}
       end
     end
 
     %{total: 1, failures: #{expected_failures}} = ExUnit.run()
+    receive do
+      :temporary_registered -> :ok
+    after
+      0 -> raise "test failed before registering the temporary provider"
+    end
     #{expected_registration} = ReqLLM.Providers.get(:registration_helper_test)
     """
 
