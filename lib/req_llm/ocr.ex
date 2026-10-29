@@ -29,6 +29,9 @@ defmodule ReqLLM.OCR do
   """
 
   alias LLMDB.Model
+  alias ReqLLM.Provider.Adapter
+  alias ReqLLM.RequestPlan
+  alias ReqLLM.Runtime
 
   @type ocr_result :: %{markdown: String.t(), pages: [map()]}
 
@@ -134,7 +137,7 @@ defmodule ReqLLM.OCR do
     deadline = ReqLLM.TimeoutBudget.deadline(opts)
 
     with {:ok, model} <- validate_model(model_spec),
-         {:ok, provider_module} <- ReqLLM.provider(model.provider),
+         {:ok, provider_module} <- Adapter.resolve(model, :ocr),
          {:ok, opts} <-
            ReqLLM.Provider.Options.normalize_namespaced_provider_options(
              provider_module,
@@ -142,22 +145,8 @@ defmodule ReqLLM.OCR do
              model,
              opts
            ),
-         {:ok, request} <-
-           provider_module.prepare_request(:ocr, model, document_binary, opts),
-         {:ok, %Req.Response{status: status, body: response}} when status in 200..299 <-
-           ReqLLM.TimeoutBudget.request(request, deadline) do
-      {:ok, normalize_response(response)}
-    else
-      {:ok, %Req.Response{status: status, body: body}} ->
-        {:error,
-         ReqLLM.Error.API.Request.exception(
-           reason: "HTTP #{status}: OCR request failed",
-           status: status,
-           response_body: body
-         )}
-
-      {:error, error} ->
-        {:error, error}
+         {:ok, plan} <- RequestPlan.from_resolved(model, :ocr, provider_module, opts, :req) do
+      Runtime.execute(plan, document_binary, deadline, &handle_response/1)
     end
   end
 
@@ -281,6 +270,19 @@ defmodule ReqLLM.OCR do
   end
 
   def ocr_capable_model?(_), do: false
+
+  defp handle_response(%Req.Response{status: status, body: response}) when status in 200..299 do
+    {:ok, normalize_response(response)}
+  end
+
+  defp handle_response(%Req.Response{status: status, body: body}) do
+    {:error,
+     ReqLLM.Error.API.Request.exception(
+       reason: "HTTP #{status}: OCR request failed",
+       status: status,
+       response_body: body
+     )}
+  end
 
   defp ocr_enabled?(capabilities) when is_map(capabilities) do
     case capabilities[:ocr] do
