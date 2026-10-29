@@ -1,9 +1,13 @@
 defmodule ReqLLM.Providers.ZaiTest do
   @moduledoc """
   Provider-level tests for Z.AI implementation.
+
+  Requests use explicit API keys, and encoding tests only transform in-memory data.
+  No shared environment or provider configuration is changed.
+  Concurrent provider-registration tests preserve the Z.AI registry entries.
   """
 
-  use ReqLLM.ProviderCase, provider: ReqLLM.Providers.Zai
+  use ExUnit.Case, async: true
 
   alias ReqLLM.Context
   alias ReqLLM.Message.ContentPart
