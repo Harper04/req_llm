@@ -6,7 +6,10 @@ defmodule ReqLLM.Evaluation do
   answer formats. An evaluation model does not need to support chat generation.
   """
 
+  alias ReqLLM.Provider.Adapter
+  alias ReqLLM.RequestPlan
   alias ReqLLM.Response
+  alias ReqLLM.Runtime
 
   @type state :: String.t() | map() | list() | ReqLLM.Context.t()
 
@@ -85,7 +88,7 @@ defmodule ReqLLM.Evaluation do
          {:ok, model} <- resolve_model(model_spec),
          :ok <- validate_support(model),
          :ok <- validate_state_support(model, state),
-         {:ok, provider} <- ReqLLM.provider(model.provider),
+         {:ok, provider} <- Adapter.resolve(model, :evaluate),
          {:ok, opts} <-
            ReqLLM.Provider.Options.normalize_namespaced_provider_options(
              provider,
@@ -93,11 +96,9 @@ defmodule ReqLLM.Evaluation do
              model,
              opts
            ),
-         {:ok, request} <-
-           provider.prepare_request(:evaluate, model, %{state: state, questions: questions}, opts),
-         {:ok, response} <-
-           ReqLLM.TimeoutBudget.request(request, ReqLLM.TimeoutBudget.deadline(opts)) do
-      result(response)
+         {:ok, plan} <- RequestPlan.from_resolved(model, :evaluate, provider, opts, :req),
+         {:ok, request} <- Runtime.prepare(plan, %{state: state, questions: questions}) do
+      Runtime.execute_prepared(request, ReqLLM.TimeoutBudget.deadline(opts), &result/1)
     end
   end
 

@@ -31,6 +31,9 @@ defmodule ReqLLM.Speech do
 
   """
 
+  alias ReqLLM.Provider.Adapter
+  alias ReqLLM.RequestPlan
+  alias ReqLLM.Runtime
   alias ReqLLM.Speech.DetailedResult
   alias ReqLLM.Speech.Result
 
@@ -172,7 +175,7 @@ defmodule ReqLLM.Speech do
     deadline = ReqLLM.TimeoutBudget.deadline(opts)
 
     with {:ok, model} <- ReqLLM.model(model_spec),
-         {:ok, provider_module} <- ReqLLM.provider(model.provider),
+         {:ok, provider_module} <- Adapter.resolve(model, :speech),
          {:ok, opts} <-
            ReqLLM.Provider.Options.normalize_namespaced_provider_options(
              provider_module,
@@ -180,17 +183,17 @@ defmodule ReqLLM.Speech do
              model,
              opts
            ),
-         {:ok, request} <-
-           provider_module.prepare_request(:speech, model, text, opts) do
+         {:ok, plan} <- RequestPlan.from_resolved(model, :speech, provider_module, opts, :req),
+         {:ok, request} <- Runtime.prepare(plan, text) do
       request = maybe_attach_usage(request, model, return_mode)
       started_at = request_started_at(return_mode)
 
-      case ReqLLM.TimeoutBudget.request(request, deadline) do
-        {:ok, %Req.Response{status: status, body: body} = response} when status in 200..299 ->
+      Runtime.execute_prepared(request, deadline, fn
+        %Req.Response{status: status, body: body} = response when status in 200..299 ->
           result = build_result(body, Keyword.get(opts, :output_format, :mp3))
           build_return(result, response, model, text, request_timings(started_at), return_mode)
 
-        {:ok, %Req.Response{status: status, body: body}} ->
+        %Req.Response{status: status, body: body} ->
           error_body = parse_error_body(body)
 
           {:error,
@@ -199,10 +202,7 @@ defmodule ReqLLM.Speech do
              status: status,
              response_body: error_body
            )}
-
-        {:error, error} ->
-          {:error, error}
-      end
+      end)
     end
   end
 

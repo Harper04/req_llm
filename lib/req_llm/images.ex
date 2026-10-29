@@ -17,7 +17,10 @@ defmodule ReqLLM.Images do
   """
 
   alias LLMDB.Model
+  alias ReqLLM.Provider.Adapter
+  alias ReqLLM.RequestPlan
   alias ReqLLM.Response
+  alias ReqLLM.Runtime
 
   @output_formats [:png, :jpeg, :webp]
   @response_formats [:binary, :url]
@@ -237,7 +240,7 @@ defmodule ReqLLM.Images do
 
     with :ok <- reject_stream_options(opts),
          {:ok, model} <- ReqLLM.model(model_spec),
-         {:ok, provider_module} <- ReqLLM.provider(model.provider),
+         {:ok, provider_module} <- Adapter.resolve(model, :image),
          {:ok, opts} <-
            ReqLLM.Provider.Options.normalize_namespaced_provider_options(
              provider_module,
@@ -245,22 +248,19 @@ defmodule ReqLLM.Images do
              model,
              opts
            ),
-         {:ok, request} <-
-           provider_module.prepare_request(:image, model, prompt_or_messages, opts),
-         {:ok, %Req.Response{status: status, body: response}} when status in 200..299 <-
-           ReqLLM.TimeoutBudget.request(request, deadline) do
-      {:ok, response}
-    else
-      {:ok, %Req.Response{status: status, body: body}} ->
-        {:error,
-         ReqLLM.Error.API.Request.exception(
-           reason: "HTTP #{status}: Request failed",
-           status: status,
-           response_body: body
-         )}
+         {:ok, plan} <- RequestPlan.from_resolved(model, :image, provider_module, opts, :req) do
+      Runtime.execute(plan, prompt_or_messages, deadline, fn
+        %Req.Response{status: status, body: response} when status in 200..299 ->
+          {:ok, response}
 
-      {:error, error} ->
-        {:error, error}
+        %Req.Response{status: status, body: body} ->
+          {:error,
+           ReqLLM.Error.API.Request.exception(
+             reason: "HTTP #{status}: Request failed",
+             status: status,
+             response_body: body
+           )}
+      end)
     end
   end
 

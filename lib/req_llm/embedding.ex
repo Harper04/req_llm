@@ -20,6 +20,9 @@ defmodule ReqLLM.Embedding do
   """
 
   alias LLMDB.Model
+  alias ReqLLM.Provider.Adapter
+  alias ReqLLM.RequestPlan
+  alias ReqLLM.Runtime
 
   defp get_embedding_models do
     ReqLLM.Providers.list()
@@ -215,7 +218,7 @@ defmodule ReqLLM.Embedding do
 
     with {:ok, model} <- validate_model(model_spec),
          :ok <- validate_input(text),
-         {:ok, provider_module} <- ReqLLM.provider(model.provider),
+         {:ok, provider_module} <- Adapter.resolve(model, :embedding),
          {:ok, provider_opts} <-
            ReqLLM.Provider.Options.normalize_namespaced_provider_options(
              provider_module,
@@ -223,28 +226,24 @@ defmodule ReqLLM.Embedding do
              model,
              request_opts
            ),
-         {:ok, request} <-
-           provider_module.prepare_request(:embedding, model, text, provider_opts),
-         {:ok, %Req.Response{status: status} = response} when status in 200..299 <-
-           ReqLLM.TimeoutBudget.request(request, deadline),
-         {:ok, embedding} <- extract_single_embedding(response.body),
-         :ok <- validate_single_embedding_dimensions(embedding, requested_dimensions(request)) do
-      if return_usage do
-        {:ok, %{embedding: embedding, usage: extract_usage(response)}}
-      else
-        {:ok, embedding}
-      end
-    else
-      {:ok, %Req.Response{status: status, body: body}} ->
-        {:error,
-         ReqLLM.Error.API.Request.exception(
-           reason: "HTTP #{status}: Request failed",
-           status: status,
-           response_body: body
-         )}
+         {:ok, plan} <-
+           RequestPlan.from_resolved(model, :embedding, provider_module, provider_opts, :req),
+         {:ok, request} <- Runtime.prepare(plan, text) do
+      Runtime.execute_prepared(request, deadline, fn
+        %Req.Response{status: status} = response when status in 200..299 ->
+          with {:ok, embedding} <- extract_single_embedding(response.body),
+               :ok <-
+                 validate_single_embedding_dimensions(embedding, requested_dimensions(request)) do
+            if return_usage do
+              {:ok, %{embedding: embedding, usage: extract_usage(response)}}
+            else
+              {:ok, embedding}
+            end
+          end
 
-      {:error, error} ->
-        {:error, error}
+        %Req.Response{} = response ->
+          http_error(response)
+      end)
     end
   end
 
@@ -255,7 +254,7 @@ defmodule ReqLLM.Embedding do
 
     with {:ok, model} <- validate_model(model_spec),
          :ok <- validate_input(texts),
-         {:ok, provider_module} <- ReqLLM.provider(model.provider),
+         {:ok, provider_module} <- Adapter.resolve(model, :embedding),
          {:ok, provider_opts} <-
            ReqLLM.Provider.Options.normalize_namespaced_provider_options(
              provider_module,
@@ -263,30 +262,34 @@ defmodule ReqLLM.Embedding do
              model,
              request_opts
            ),
-         {:ok, request} <-
-           provider_module.prepare_request(:embedding, model, texts, provider_opts),
-         {:ok, %Req.Response{status: status} = response} when status in 200..299 <-
-           ReqLLM.TimeoutBudget.request(request, deadline),
-         {:ok, embeddings} <- extract_multiple_embeddings(response.body),
-         :ok <-
-           validate_multiple_embedding_dimensions(embeddings, requested_dimensions(request)) do
-      if return_usage do
-        {:ok, %{embedding: embeddings, usage: extract_usage(response)}}
-      else
-        {:ok, embeddings}
-      end
-    else
-      {:ok, %Req.Response{status: status, body: body}} ->
-        {:error,
-         ReqLLM.Error.API.Request.exception(
-           reason: "HTTP #{status}: Request failed",
-           status: status,
-           response_body: body
-         )}
+         {:ok, plan} <-
+           RequestPlan.from_resolved(model, :embedding, provider_module, provider_opts, :req),
+         {:ok, request} <- Runtime.prepare(plan, texts) do
+      Runtime.execute_prepared(request, deadline, fn
+        %Req.Response{status: status} = response when status in 200..299 ->
+          with {:ok, embeddings} <- extract_multiple_embeddings(response.body),
+               :ok <-
+                 validate_multiple_embedding_dimensions(embeddings, requested_dimensions(request)) do
+            if return_usage do
+              {:ok, %{embedding: embeddings, usage: extract_usage(response)}}
+            else
+              {:ok, embeddings}
+            end
+          end
 
-      {:error, error} ->
-        {:error, error}
+        %Req.Response{} = response ->
+          http_error(response)
+      end)
     end
+  end
+
+  defp http_error(%Req.Response{status: status, body: body}) do
+    {:error,
+     ReqLLM.Error.API.Request.exception(
+       reason: "HTTP #{status}: Request failed",
+       status: status,
+       response_body: body
+     )}
   end
 
   defp validate_input("") do
