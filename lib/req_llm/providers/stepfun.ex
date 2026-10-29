@@ -11,8 +11,6 @@ defmodule ReqLLM.Providers.StepFun do
     default_base_url: "https://api.stepfun.com/v1",
     default_env_key: "STEPFUN_API_KEY"
 
-  use ReqLLM.Provider.Defaults
-
   alias ReqLLM.Providers.StepFun.Shared
 
   @provider_schema Shared.provider_schema()

@@ -36,8 +36,6 @@ defmodule ReqLLM.Providers.Meta do
     default_base_url: "https://api.meta.ai/v1",
     default_env_key: "MODEL_API_KEY"
 
-  use ReqLLM.Provider.Defaults
-
   alias ReqLLM.Providers.Meta.Llama
   alias ReqLLM.Providers.OpenAI.AdapterHelpers
   alias ReqLLM.Providers.OpenAI.ResponsesAPI

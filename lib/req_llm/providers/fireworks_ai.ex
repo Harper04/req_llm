@@ -60,8 +60,6 @@ defmodule ReqLLM.Providers.FireworksAI do
     default_base_url: "https://api.fireworks.ai/inference/v1",
     default_env_key: "FIREWORKS_API_KEY"
 
-  use ReqLLM.Provider.Defaults
-
   import ReqLLM.Provider.Utils, only: [maybe_put: 3]
 
   @non_streaming_max_tokens 4096

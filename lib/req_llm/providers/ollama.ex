@@ -48,8 +48,6 @@ defmodule ReqLLM.Providers.Ollama do
     id: :ollama,
     default_base_url: "http://localhost:11434/v1"
 
-  use ReqLLM.Provider.Defaults
-
   @reasoning_efforts [:none, :low, :medium, :high, :max]
   @reasoning_effort_strings Enum.map(@reasoning_efforts, &Atom.to_string/1)
 

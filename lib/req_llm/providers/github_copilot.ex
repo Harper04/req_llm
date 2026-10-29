@@ -31,8 +31,6 @@ defmodule ReqLLM.Providers.GitHubCopilot do
     default_base_url: "https://api.githubcopilot.com",
     default_env_key: "COPILOT_GITHUB_TOKEN"
 
-  use ReqLLM.Provider.Defaults
-
   @default_integration_id "vscode-chat"
 
   @provider_schema [

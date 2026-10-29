@@ -36,8 +36,6 @@ defmodule ReqLLM.Providers.Mistral do
     default_base_url: "https://api.mistral.ai/v1",
     default_env_key: "MISTRAL_API_KEY"
 
-  use ReqLLM.Provider.Defaults
-
   import ReqLLM.Provider.Utils, only: [maybe_put: 3, maybe_put_skip: 4]
 
   @provider_schema [

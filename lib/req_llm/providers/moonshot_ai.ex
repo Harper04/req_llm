@@ -25,8 +25,6 @@ defmodule ReqLLM.Providers.MoonshotAI do
     default_base_url: "https://api.moonshot.ai/v1",
     default_env_key: "MOONSHOT_API_KEY"
 
-  use ReqLLM.Provider.Defaults
-
   import ReqLLM.Provider.Utils, only: [maybe_put: 3]
 
   @default_receive_timeout 300_000

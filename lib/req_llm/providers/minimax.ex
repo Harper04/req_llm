@@ -30,8 +30,6 @@ defmodule ReqLLM.Providers.Minimax do
     default_base_url: "https://api.minimax.io/v1",
     default_env_key: "MINIMAX_API_KEY"
 
-  use ReqLLM.Provider.Defaults
-
   import ReqLLM.Provider.Utils, only: [maybe_put: 3]
 
   @provider_schema [

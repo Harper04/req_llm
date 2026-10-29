@@ -91,8 +91,6 @@ defmodule ReqLLM.Providers.Deepseek do
     default_base_url: "https://api.deepseek.com",
     default_env_key: "DEEPSEEK_API_KEY"
 
-  use ReqLLM.Provider.Defaults
-
   import ReqLLM.Provider.Utils, only: [maybe_put: 3]
 
   @provider_schema [

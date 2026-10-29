@@ -49,7 +49,5 @@ defmodule ReqLLM.Providers.VLLM do
     default_base_url: "http://localhost:8000/v1",
     default_env_key: "OPENAI_API_KEY"
 
-  use ReqLLM.Provider.Defaults
-
   @provider_schema []
 end
