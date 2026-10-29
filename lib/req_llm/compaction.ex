@@ -40,7 +40,9 @@ defmodule ReqLLM.Compaction do
   alias ReqLLM.Context
   alias ReqLLM.Message
   alias ReqLLM.Message.ContentPart
+  alias ReqLLM.RequestPlan
   alias ReqLLM.Response
+  alias ReqLLM.Runtime
 
   @compaction_block_type "compaction"
 
@@ -102,14 +104,15 @@ defmodule ReqLLM.Compaction do
            ),
          {:ok, context} <- Context.normalize(messages || [], opts),
          :ok <- validate_input(context, opts),
-         {:ok, request} <-
-           provider_module.prepare_request(
-             :compact,
+         {:ok, plan} <-
+           RequestPlan.from_resolved(
              model,
-             context,
-             Keyword.put(opts, :operation, :compact)
+             :compact,
+             provider_module,
+             Keyword.put(opts, :operation, :compact),
+             :req
            ),
-         {:ok, response} <- run_request(request, deadline) do
+         {:ok, response} <- Runtime.execute(plan, context, deadline, &handle_response/1) do
       {:ok, finalize(response)}
     end
   end
@@ -208,23 +211,18 @@ defmodule ReqLLM.Compaction do
 
   defp provider_option(_provider_options, _key), do: nil
 
-  defp run_request(request, deadline) do
-    case ReqLLM.TimeoutBudget.request(request, deadline) do
-      {:ok, %Req.Response{status: status, body: %Response{} = response}}
-      when status in 200..299 ->
-        {:ok, response}
+  defp handle_response(%Req.Response{status: status, body: %Response{} = response})
+       when status in 200..299 do
+    {:ok, response}
+  end
 
-      {:ok, %Req.Response{status: status, body: body}} ->
-        {:error,
-         ReqLLM.Error.API.Request.exception(
-           reason: "HTTP #{status}: compaction request failed",
-           status: status,
-           response_body: body
-         )}
-
-      {:error, error} ->
-        {:error, error}
-    end
+  defp handle_response(%Req.Response{status: status, body: body}) do
+    {:error,
+     ReqLLM.Error.API.Request.exception(
+       reason: "HTTP #{status}: compaction request failed",
+       status: status,
+       response_body: body
+     )}
   end
 
   defp finalize(%Response{message: %Message{} = message} = response) do
