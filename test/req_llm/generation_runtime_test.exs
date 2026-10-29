@@ -106,15 +106,8 @@ defmodule ReqLLM.GenerationRuntimeTest do
       assert_receive {:cache_key, _,
                       %{operation: ^operation, context: ^context, schema: key_schema}}
 
-      if operation == :object do
-        assert key_schema == @schema
-        assert %{schema: @schema, compiled: %NimbleOptions{}} = prepared_opts[:compiled_schema]
-        assert first.object == %{"count" => 42}
-      else
-        assert key_schema == nil
-        refute Keyword.has_key?(prepared_opts, :compiled_schema)
-        assert Response.text(first) == "Hello"
-      end
+      assert_cache_schema(operation, key_schema, prepared_opts)
+      assert_generated_output(operation, first)
 
       assert_receive {:stored, key, ^first, 300, ^cache_options}
       assert first.usage.total_tokens == 7
@@ -255,24 +248,7 @@ defmodule ReqLLM.GenerationRuntimeTest do
       Req.Test.stub(stub, fn conn ->
         refute Map.has_key?(conn.body_params, "pricing_context")
 
-        message =
-          if operation == :object do
-            %{
-              "role" => "assistant",
-              "tool_calls" => [
-                %{
-                  "id" => "call-parity",
-                  "type" => "function",
-                  "function" => %{
-                    "name" => "structured_output",
-                    "arguments" => ~s({"count":42})
-                  }
-                }
-              ]
-            }
-          else
-            %{"role" => "assistant", "content" => "Hello"}
-          end
+        message = provider_message(operation)
 
         Req.Test.json(conn, %{
           "id" => "provider-parity",
@@ -312,11 +288,7 @@ defmodule ReqLLM.GenerationRuntimeTest do
       assert response.usage.pricing.status == :priced
       assert_in_delta response.usage.total_cost, 0.000009, 0.000000001
 
-      if operation == :object do
-        assert Response.object(response) == %{"count" => 42}
-      else
-        assert Response.text(response) == "Hello"
-      end
+      assert_generated_output(operation, response)
 
       assert_receive {:telemetry, [:req_llm, :request, :start], %{system_time: system_time},
                       start}
@@ -381,6 +353,39 @@ defmodule ReqLLM.GenerationRuntimeTest do
 
   defp generate(:object, model, opts),
     do: Generation.generate_object(model, "Hello", @schema, opts)
+
+  defp assert_cache_schema(:chat, key_schema, prepared_opts) do
+    assert key_schema == nil
+    refute Keyword.has_key?(prepared_opts, :compiled_schema)
+  end
+
+  defp assert_cache_schema(:object, key_schema, prepared_opts) do
+    assert key_schema == @schema
+    assert %{schema: @schema, compiled: %NimbleOptions{}} = prepared_opts[:compiled_schema]
+  end
+
+  defp assert_generated_output(:chat, response), do: assert(Response.text(response) == "Hello")
+
+  defp assert_generated_output(:object, response),
+    do: assert(Response.object(response) == %{"count" => 42})
+
+  defp provider_message(:chat), do: %{"role" => "assistant", "content" => "Hello"}
+
+  defp provider_message(:object) do
+    %{
+      "role" => "assistant",
+      "tool_calls" => [
+        %{
+          "id" => "call-parity",
+          "type" => "function",
+          "function" => %{
+            "name" => "structured_output",
+            "arguments" => ~s({"count":42})
+          }
+        }
+      ]
+    }
+  end
 
   defp decoded_request(response, owner) do
     Req.new(
