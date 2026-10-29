@@ -182,7 +182,7 @@ server-side MCP integrations are outside this provider's scope.
 Transport tests use a local HTTP stub and need no LM Studio installation:
 
 ```bash
-mix test test/providers/lmstudio_test.exs
+mix test test/req_llm/providers/lmstudio_test.exs
 ```
 
 Recorded coverage uses explicit local model specs, independently of LLMDB and

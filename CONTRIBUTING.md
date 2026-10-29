@@ -166,7 +166,7 @@ mix mc "your_provider:*"
 The output should show all models with ✓ status. This is **mandatory** before PR submission.
 
 ✅ **Provider-specific tests added**
-- Add tests in `test/provider/your_provider_test.exs`
+- Add tests in `test/req_llm/providers/your_provider_test.exs`
 - Use mocked responses (no live API calls in provider tests)
 - Cover edge cases, error handling, and provider-specific features
 
@@ -209,7 +209,7 @@ mix mc "your_provider:specific-model" --record
 
 ✅ **Tests cover new feature**
 - Add coverage tests in `test/coverage/` for high-level API
-- Add provider tests in `test/provider/` with mocked responses
+- Add provider tests in `test/req_llm/providers/` with mocked responses
 - Ensure fixtures demonstrate the new capability
 
 ✅ **Model compatibility maintained**
@@ -268,11 +268,19 @@ This is important because Elixir 1.18 and 1.19 format some code differently (par
 
 ## Testing Requirements
 
-ReqLLM uses a three-tier testing architecture:
+ReqLLM uses the following canonical v1.x test layout:
 
-1. **Core Package Tests** (`test/req_llm/`): Unit tests with no API calls
-2. **Provider Tests** (`test/provider/`): Mocked provider-specific tests
-3. **Coverage Tests** (`test/coverage/`): Live API tests with fixture caching
+- `test/req_llm/`: normal unit and mocked tests, mirroring `lib/req_llm/`; provider tests live in `test/req_llm/providers/`.
+- `test/integration/`: opt-in integration tests, excluded by default; run with `mix test test/integration/ --include integration`.
+- `test/coverage/`: recorded and live provider coverage, excluded by default; replay with `mix test test/coverage/ --include coverage`.
+- `test/contracts/`: extension contract tests.
+- `test/release/`: release construction tests.
+- `test/support/`: shared test code and fixtures.
+
+Run `mix test` to include existing top-level tests and Mix task tests in `test/mix/`. Release fixtures remain in `test/fixtures/`.
+
+`mix test` remains the normal test command. Integration and provider coverage
+tests are opt-in; the default exclusions are defined in `test/test_helper.exs`.
 
 ### Running Tests
 

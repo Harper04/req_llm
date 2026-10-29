@@ -12,7 +12,7 @@ defmodule ReqLLM.Integration.OllamaRequestBodyTest do
 
   Run with:
 
-      mix test test/req_llm/integration/ollama_request_body_test.exs --include integration
+      mix test test/integration/ollama_request_body_test.exs --include integration
   """
 
   use ExUnit.Case, async: false

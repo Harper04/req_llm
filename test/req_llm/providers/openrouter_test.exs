@@ -1518,6 +1518,7 @@ defmodule ReqLLM.Providers.OpenRouterTest do
         Path.join([
           __DIR__,
           "..",
+          "..",
           "support",
           "fixtures",
           "openrouter",
@@ -1696,6 +1697,7 @@ defmodule ReqLLM.Providers.OpenRouterTest do
         Path.join([
           __DIR__,
           "..",
+          "..",
           "support",
           "fixtures",
           "openrouter",
@@ -1811,6 +1813,7 @@ defmodule ReqLLM.Providers.OpenRouterTest do
       fixture_path =
         Path.join([
           __DIR__,
+          "..",
           "..",
           "support",
           "fixtures",
