@@ -28,8 +28,6 @@ defmodule ReqLLM.Providers.NearAI do
     default_base_url: "https://cloud-api.near.ai/v1",
     default_env_key: "NEARAI_API_KEY"
 
-  use ReqLLM.Provider.Defaults
-
   @provider_schema [
     max_completion_tokens: [
       type: :pos_integer,

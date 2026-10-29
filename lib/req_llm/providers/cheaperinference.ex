@@ -23,8 +23,6 @@ defmodule ReqLLM.Providers.CheaperInference do
     default_base_url: "https://api.cheaperinference.com/v1",
     default_env_key: "CHEAPERINFERENCE_API_KEY"
 
-  use ReqLLM.Provider.Defaults
-
   alias ReqLLM.Provider.Defaults
 
   @provider_schema []
