@@ -5,6 +5,8 @@ defmodule ReqLLM.RuntimeTest do
   alias ReqLLM.Runtime
 
   defmodule Provider do
+    def prepare_request(_operation, _model, _input, error: error), do: {:error, error}
+
     def prepare_request(operation, model, input, opts) do
       send(opts[:owner], {:prepared, operation, model, input, opts})
       {:ok, opts[:request]}
@@ -44,5 +46,95 @@ defmodule ReqLLM.RuntimeTest do
     assert Runtime.execute(plan, input, :infinity, policy) == {:ok, result_ref}
     assert_receive {:prepared, :ocr, ^model, ^input, ^opts}
     refute_received {:prepared, _, _, _, _}
+  end
+
+  test "prepares once without sending and allows changes before repeated sends" do
+    owner = self()
+    model = %LLMDB.Model{provider: :runtime_test, id: "outside-the-catalog"}
+    schema = NimbleOptions.new!(value: [type: :string])
+
+    request =
+      Req.new(
+        url: "https://runtime.example",
+        adapter: fn request ->
+          send(owner, {:sent, Req.Request.get_header(request, "x-operation")})
+          {request, Req.Response.new(status: 202, body: :provider_result)}
+        end
+      )
+
+    opts = [owner: owner, request: request, schema: schema, duplicate: 1, duplicate: 2]
+    assert {:ok, plan} = RequestPlan.from_resolved(model, :video, Provider, opts, :req)
+    assert {:ok, ^request} = Runtime.prepare(plan, :input)
+    assert_receive {:prepared, :video, ^model, :input, ^opts}
+    refute_received {:sent, _}
+
+    request = Req.Request.put_header(request, "x-operation", "transformed")
+
+    for _ <- 1..2 do
+      assert {:ok, :operation_result} =
+               Runtime.execute_prepared(request, :infinity, fn
+                 %Req.Response{status: 202, body: :provider_result} -> {:ok, :operation_result}
+               end)
+
+      assert_receive {:sent, ["transformed"]}
+    end
+
+    refute_received {:prepared, _, _, _, _}
+  end
+
+  test "passes completed HTTP errors to the result policy unchanged" do
+    response = Req.Response.new(status: 422, body: %{"error" => "invalid input"})
+
+    request =
+      Req.new(
+        url: "https://runtime.example",
+        adapter: fn request -> {request, response} end
+      )
+
+    assert {:error, {:operation_error, ^response}} =
+             Runtime.execute_prepared(request, :infinity, fn response ->
+               {:error, {:operation_error, response}}
+             end)
+  end
+
+  test "passes preparation errors through without sending or applying the policy" do
+    error = ReqLLM.Error.Invalid.Parameter.exception(parameter: "provider preparation failed")
+    model = %LLMDB.Model{provider: :runtime_test, id: "outside-the-catalog"}
+    assert {:ok, plan} = RequestPlan.from_resolved(model, :speech, Provider, [error: error], :req)
+
+    assert Runtime.prepare(plan, :input) == {:error, error}
+
+    assert Runtime.execute(plan, :input, :infinity, fn _ -> flunk("unexpected result policy") end) ==
+             {:error, error}
+  end
+
+  test "passes transport errors through without applying the policy" do
+    error = %Req.TransportError{reason: :closed}
+
+    request =
+      Req.new(
+        url: "https://runtime.example",
+        retry: false,
+        adapter: fn request -> {request, error} end
+      )
+
+    assert Runtime.execute_prepared(request, :infinity, fn _ ->
+             flunk("unexpected result policy")
+           end) == {:error, error}
+  end
+
+  test "preserves expired deadlines without sending or applying the policy" do
+    request =
+      Req.new(
+        url: "https://runtime.example",
+        adapter: fn _ -> flunk("unexpected transport execution") end
+      )
+
+    deadline = %{timeout: 10, expires_at: System.monotonic_time(:millisecond) - 1}
+
+    assert {:error, %ReqLLM.Error.API.Timeout{kind: :total, timeout: 10}} =
+             Runtime.execute_prepared(request, deadline, fn _ ->
+               flunk("unexpected result policy")
+             end)
   end
 end
