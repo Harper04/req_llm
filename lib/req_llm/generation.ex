@@ -12,7 +12,10 @@ defmodule ReqLLM.Generation do
   """
 
   alias ReqLLM.Context
+  alias ReqLLM.Provider.Adapter
+  alias ReqLLM.RequestPlan
   alias ReqLLM.Response
+  alias ReqLLM.Runtime
 
   @doc """
   Returns the base generation options schema.
@@ -111,7 +114,7 @@ defmodule ReqLLM.Generation do
   defp generate_text_response(model_input, messages, opts) do
     with {:ok, model, messages, opts} <-
            resolve_model_input(model_input, messages, opts),
-         {:ok, provider_module} <- ReqLLM.ProviderDispatch.get(model, :chat),
+         {:ok, provider_module} <- Adapter.resolve(model, :chat),
          {:ok, opts} <-
            ReqLLM.Provider.Options.normalize_namespaced_provider_options(
              provider_module,
@@ -126,14 +129,9 @@ defmodule ReqLLM.Generation do
           {:ok, response}
 
         {:miss, cache_ref} ->
-          execute_generate_text(
-            provider_module,
-            model,
-            context,
-            ReqLLM.Cache.request_opts(opts),
-            opts,
-            cache_ref
-          )
+          execute_generation(provider_module, model, :chat, context, opts, fn response ->
+            {:ok, ReqLLM.Cache.store(cache_ref, response, opts)}
+          end)
       end
     end
   end
@@ -389,7 +387,7 @@ defmodule ReqLLM.Generation do
        ) do
     with {:ok, model, messages, opts} <-
            resolve_model_input(model_input, messages, opts),
-         {:ok, provider_module} <- ReqLLM.ProviderDispatch.get(model, :object),
+         {:ok, provider_module} <- Adapter.resolve(model, :object),
          {:ok, opts} <-
            ReqLLM.Provider.Options.normalize_namespaced_provider_options(
              provider_module,
@@ -409,14 +407,22 @@ defmodule ReqLLM.Generation do
             {:ok, response}
 
           {:miss, cache_ref} ->
-            execute_generate_object(
+            execute_generation(
               provider_module,
               model,
+              :object,
               context,
-              compiled_schema,
-              ReqLLM.Cache.request_opts(compiled_opts),
               compiled_opts,
-              cache_ref
+              fn decoded_response ->
+                response =
+                  if ReqLLM.ModelHelpers.json_strict?(model) do
+                    decoded_response
+                  else
+                    coerce_object_types(decoded_response, compiled_schema.schema)
+                  end
+
+                {:ok, ReqLLM.Cache.store(cache_ref, response, compiled_opts)}
+              end
             )
         end
 
@@ -484,87 +490,37 @@ defmodule ReqLLM.Generation do
 
   defp coerce_object_types(response, _schema), do: response
 
-  defp execute_generate_text(provider_module, model, context, request_opts, cache_opts, cache_ref) do
+  defp execute_generation(provider_module, model, operation, context, opts, success_policy) do
+    request_opts = ReqLLM.Cache.request_opts(opts)
     deadline = ReqLLM.TimeoutBudget.deadline(request_opts)
 
-    with {:ok, request} <-
-           provider_module.prepare_request(
-             :chat,
+    with {:ok, plan} <-
+           RequestPlan.from_resolved(
              model,
-             context,
-             Keyword.delete(request_opts, :pricing_context)
+             operation,
+             provider_module,
+             Keyword.delete(request_opts, :pricing_context),
+             :req
            ),
-         {:ok, %Req.Response{status: status, body: decoded_response}} when status in 200..299 <-
-           ReqLLM.TimeoutBudget.request(
-             Req.Request.put_private(
-               request,
-               :req_llm_pricing_context,
-               request_opts[:pricing_context]
-             ),
-             deadline
-           ) do
-      {:ok, ReqLLM.Cache.store(cache_ref, decoded_response, cache_opts)}
-    else
-      {:ok, %Req.Response{status: status, body: body}} ->
-        {:error,
-         ReqLLM.Error.API.Request.exception(
-           reason: "HTTP #{status}: Request failed",
-           status: status,
-           response_body: body
-         )}
-
-      {:error, error} ->
-        {:error, error}
+         {:ok, request} <- Runtime.prepare(plan, context) do
+      request
+      |> Req.Request.put_private(:req_llm_pricing_context, request_opts[:pricing_context])
+      |> Runtime.execute_prepared(deadline, &handle_generation_response(&1, success_policy))
     end
   end
 
-  defp execute_generate_object(
-         provider_module,
-         model,
-         context,
-         compiled_schema,
-         request_opts,
-         cache_opts,
-         cache_ref
-       ) do
-    deadline = ReqLLM.TimeoutBudget.deadline(request_opts)
+  defp handle_generation_response(%Req.Response{status: status, body: body}, success_policy)
+       when status in 200..299 do
+    success_policy.(body)
+  end
 
-    with {:ok, request} <-
-           provider_module.prepare_request(
-             :object,
-             model,
-             context,
-             Keyword.delete(request_opts, :pricing_context)
-           ),
-         {:ok, %Req.Response{status: status, body: decoded_response}} when status in 200..299 <-
-           ReqLLM.TimeoutBudget.request(
-             Req.Request.put_private(
-               request,
-               :req_llm_pricing_context,
-               request_opts[:pricing_context]
-             ),
-             deadline
-           ) do
-      response =
-        if ReqLLM.ModelHelpers.json_strict?(model) do
-          decoded_response
-        else
-          coerce_object_types(decoded_response, compiled_schema.schema)
-        end
-
-      {:ok, ReqLLM.Cache.store(cache_ref, response, cache_opts)}
-    else
-      {:ok, %Req.Response{status: status, body: body}} ->
-        {:error,
-         ReqLLM.Error.API.Request.exception(
-           reason: "HTTP #{status}: Request failed",
-           status: status,
-           response_body: body
-         )}
-
-      {:error, error} ->
-        {:error, error}
-    end
+  defp handle_generation_response(%Req.Response{status: status, body: body}, _success_policy) do
+    {:error,
+     ReqLLM.Error.API.Request.exception(
+       reason: "HTTP #{status}: Request failed",
+       status: status,
+       response_body: body
+     )}
   end
 
   defp coerce_with_schema(data, schema) do
