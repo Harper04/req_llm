@@ -140,8 +140,7 @@ defmodule Provider.Anthropic.OAuthTest do
     test "falls back to a status-only error for unstructured failed refresh responses" do
       assert {:error, "Anthropic OAuth refresh failed with status 500"} =
                OAuth.refresh(%{refresh: "refresh-token-123"},
-                 oauth_http_options:
-                   HTTPAdapter.options(response_adapter(500, [:bad_response])) ++ [max_retries: 0]
+                 oauth_http_options: HTTPAdapter.options(response_adapter(500, [:bad_response]))
                )
     end
 
