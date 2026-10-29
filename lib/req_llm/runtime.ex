@@ -3,8 +3,8 @@ defmodule ReqLLM.Runtime do
 
   alias ReqLLM.Provider.Adapter
   alias ReqLLM.RequestPlan
-  alias ReqLLM.TimeoutBudget
   alias ReqLLM.StreamServer
+  alias ReqLLM.TimeoutBudget
 
   require Logger
 

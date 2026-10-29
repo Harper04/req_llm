@@ -1,8 +1,8 @@
 defmodule ReqLLM.Streaming.RequestPlanParityTest do
   use ExUnit.Case, async: true
 
-  alias ReqLLM.RequestPlan
   alias ReqLLM.Providers.{Anthropic, OpenAI}
+  alias ReqLLM.RequestPlan
 
   @routes [
     {:openai, OpenAI, "openai_responses"},
