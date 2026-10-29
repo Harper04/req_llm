@@ -46,7 +46,7 @@ defmodule ReqLLM.TestSupport.ApplicationConfigTest do
       {output, status} =
         System.cmd(
           System.find_executable("elixir"),
-          ["-r", Path.expand("../support/application_config.ex", __DIR__), "-e", script],
+          ["-r", Path.expand("application_config.ex", __DIR__), "-e", script],
           stderr_to_stdout: true
         )
 
