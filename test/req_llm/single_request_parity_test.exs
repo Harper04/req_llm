@@ -18,7 +18,8 @@ defmodule ReqLLM.SingleRequestParityTest do
       owner: [type: :any],
       preparation_error: [type: :any],
       preparation_delay: [type: :non_neg_integer],
-      dimensions: [type: :pos_integer]
+      dimensions: [type: :pos_integer],
+      prepared_dimensions: [type: :pos_integer]
     ]
 
     @impl ReqLLM.Provider
@@ -41,11 +42,14 @@ defmodule ReqLLM.SingleRequestParityTest do
             |> Req.Request.merge_options(
               operation: operation,
               dimensions: opts[:dimensions],
-              provider_options: Keyword.take(controls, [:dimensions])
+              provider_options: [
+                dimensions: Keyword.get(controls, :prepared_dimensions, controls[:dimensions])
+              ]
             )
             |> attach_embedding_usage(model, operation)
             |> ReqLLM.Step.Telemetry.attach(model, Keyword.put(opts, :operation, operation))
 
+          send(controls[:owner], {:preparation_finished_at, System.monotonic_time()})
           {:ok, request}
       end
     end
@@ -202,8 +206,8 @@ defmodule ReqLLM.SingleRequestParityTest do
 
     test "#{kind} retains return_usage and takes dimensions from the prepared request" do
       opts =
-        request_options(success_response(@kind), dimensions: 2)
-        |> Keyword.merge(return_usage: true, dimensions: 3)
+        request_options(success_response(@kind), dimensions: 3, prepared_dimensions: 2)
+        |> Keyword.merge(return_usage: true, dimensions: 4)
 
       assert {:ok,
               %{
@@ -214,14 +218,14 @@ defmodule ReqLLM.SingleRequestParityTest do
       assert embedding == expected_result(@kind)
       assert_receive {:prepared, :embedding, _, _, provider_opts}
       refute Keyword.has_key?(provider_opts, :return_usage)
-      assert provider_opts[:dimensions] == 3
-      assert provider_opts[:provider_options][:dimensions] == 2
+      assert provider_opts[:dimensions] == 4
+      assert provider_opts[:provider_options][:dimensions] == 3
     end
 
     test "#{kind} rejects dimensions using the prepared request rather than input options" do
       opts =
-        request_options(success_response(@kind), dimensions: 3)
-        |> Keyword.put(:dimensions, 2)
+        request_options(success_response(@kind), dimensions: 2, prepared_dimensions: 3)
+        |> Keyword.put(:dimensions, 4)
 
       assert {:error,
               %ReqLLM.Error.API.Response{
@@ -235,7 +239,7 @@ defmodule ReqLLM.SingleRequestParityTest do
     @kind kind
 
     test "detailed #{kind} preserves its result, post-preparation usage step and timing" do
-      opts = request_options(success_response(@kind))
+      opts = request_options(success_response(@kind), preparation_delay: 250)
 
       result =
         case @kind do
@@ -246,6 +250,13 @@ defmodule ReqLLM.SingleRequestParityTest do
             ReqLLM.transcribe_detailed(model(), {:binary, @audio, "audio/wav"}, opts)
         end
 
+      finished_at = System.monotonic_time()
+      assert_receive {:preparation_finished_at, preparation_finished_at}
+
+      post_preparation_ms =
+        System.convert_time_unit(finished_at - preparation_finished_at, :native, :microsecond) /
+          1_000
+
       assert {:ok, detailed} = result
       assert detailed.result == expected_result(@kind)
       assert detailed.call_metadata.model == "single-request-parity"
@@ -253,6 +264,7 @@ defmodule ReqLLM.SingleRequestParityTest do
       assert detailed.call_metadata.usage.input_tokens == 7
       assert detailed.call_metadata.usage.total_tokens == 7
       assert detailed.call_metadata.timings.request_ms > 0
+      assert detailed.call_metadata.timings.request_ms <= post_preparation_ms
       assert_receive :sent
       refute_received :sent
       assert_receive {:telemetry, [:req_llm, :request, :stop], _, metadata}
