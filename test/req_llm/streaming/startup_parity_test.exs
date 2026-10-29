@@ -167,6 +167,47 @@ defmodule ReqLLM.Streaming.StartupParityTest do
     assert StreamResponse.finish_reason(response) == :stop
   end
 
+  test "public image streaming keeps preview order and final response assembly" do
+    png = <<137, 80, 78, 71, 13, 10, 26, 10>>
+
+    payload =
+      ["image_generation.partial_image", "image_generation.completed"]
+      |> Enum.map_join(fn type ->
+        "data: " <>
+          Jason.encode!(%{
+            "type" => type,
+            "b64_json" => Base.encode64(png),
+            "partial_image_index" => 0
+          }) <>
+          "\n\n"
+      end)
+
+    server =
+      start_supervised!({Bandit, plug: {Endpoint, body: payload}, ip: {127, 0, 0, 1}, port: 0})
+
+    {:ok, {_address, port}} = ThousandIsland.listener_info(server)
+
+    assert {:ok, response} =
+             ReqLLM.stream_image(%{provider: :openai, id: "gpt-image-1.5"}, "A red square",
+               api_key: "test-key",
+               base_url: "http://127.0.0.1:#{port}/v1"
+             )
+
+    chunks = Enum.to_list(response.stream)
+
+    assert [
+             %StreamChunk{type: :content_part, metadata: %{stream_only?: true}},
+             %StreamChunk{type: :content_part, content_part: final},
+             %StreamChunk{type: :meta, metadata: %{terminal?: true}}
+           ] = chunks
+
+    assert final.data == png
+    assert final.metadata.partial? == false
+    assert {:ok, assembled} = StreamResponse.to_response(%{response | stream: chunks})
+    assert ReqLLM.Response.images(assembled) == [final]
+    assert assembled.finish_reason == :stop
+  end
+
   defp model, do: %LLMDB.Model{provider: :startup_parity, id: "model"}
 
   defp frame(event) do
