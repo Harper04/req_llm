@@ -228,7 +228,7 @@ defmodule ReqLLM.ImagesTest do
 
     test "rejects DALL-E models" do
       assert {:error, %ReqLLM.Error.Invalid.Parameter{parameter: message}} =
-               Images.stream_image("openai:dall-e-3", "A red square")
+               Images.stream_image(%{provider: :openai, id: "dall-e-3"}, "A red square")
 
       assert message =~ "dall-e-3"
     end

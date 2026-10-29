@@ -738,7 +738,7 @@ defmodule ReqLLM.Provider.OptionsTest do
       model = %LLMDB.Model{provider: :warning_pipeline, id: "test-model"}
 
       log =
-        capture_log(fn ->
+        capture_log([colors: [enabled: false]], fn ->
           assert {:ok, _processed} =
                    Options.process(WarningPipelineProvider, :chat, model, [])
         end)
@@ -756,7 +756,7 @@ defmodule ReqLLM.Provider.OptionsTest do
       refute Process.get(:req_llm_warnings)
 
       log =
-        capture_log(fn ->
+        capture_log([colors: [enabled: false]], fn ->
           assert {:ok, _processed} =
                    Options.process(WarningPipelineProvider, :chat, model, [])
         end)

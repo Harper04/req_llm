@@ -53,10 +53,15 @@ defmodule ReqLLM.Providers.AtlasCloudTest do
 
   describe "model fallback" do
     test "resolves Atlas Cloud model strings before LLMDB catalog support" do
-      assert {:ok, model} = ReqLLM.model("atlascloud:qwen/qwen3.5-flash")
-      assert model.provider == :atlascloud
-      assert model.id == "qwen/qwen3.5-flash"
-      assert model.model == "qwen/qwen3.5-flash"
+      warning =
+        ExUnit.CaptureIO.capture_io(:stderr, fn ->
+          assert {:ok, model} = ReqLLM.model("atlascloud:qwen/qwen3.5-flash")
+          assert model.provider == :atlascloud
+          assert model.id == "qwen/qwen3.5-flash"
+          assert model.model == "qwen/qwen3.5-flash"
+        end)
+
+      assert warning =~ "Using unverified model: atlascloud:qwen/qwen3.5-flash"
     end
   end
 

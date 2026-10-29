@@ -682,7 +682,7 @@ defmodule ReqLLM.TelemetryTest do
     {:ok, request} = provider.prepare_request(:chat, model, "Hello", opts)
 
     request =
-      Map.put(request, :adapter, fn req ->
+      ReqLLM.Test.HTTPAdapter.attach(request, fn req ->
         response =
           %Req.Response{
             status: 200,

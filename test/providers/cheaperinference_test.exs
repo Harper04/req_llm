@@ -53,10 +53,15 @@ defmodule ReqLLM.Providers.CheaperInferenceTest do
 
   describe "model fallback" do
     test "resolves Cheaper Inference model strings before LLMDB catalog support" do
-      assert {:ok, model} = ReqLLM.model("cheaperinference:gpt-5.4-mini")
-      assert model.provider == :cheaperinference
-      assert model.id == "gpt-5.4-mini"
-      assert model.model == "gpt-5.4-mini"
+      warning =
+        ExUnit.CaptureIO.capture_io(:stderr, fn ->
+          assert {:ok, model} = ReqLLM.model("cheaperinference:gpt-5.4-mini")
+          assert model.provider == :cheaperinference
+          assert model.id == "gpt-5.4-mini"
+          assert model.model == "gpt-5.4-mini"
+        end)
+
+      assert warning =~ "Using unverified model: cheaperinference:gpt-5.4-mini"
     end
   end
 

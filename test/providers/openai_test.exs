@@ -64,7 +64,7 @@ defmodule ReqLLM.Providers.OpenAITest do
 
   describe "request preparation & pipeline wiring" do
     test "prepare_request creates configured chat request" do
-      {:ok, model} = ReqLLM.model("openai:gpt-4-turbo")
+      {:ok, model} = ReqLLM.model(%{provider: :openai, id: "gpt-4-turbo"})
       context = context_fixture()
       opts = [temperature: 0.7, max_tokens: 100]
 
@@ -76,7 +76,7 @@ defmodule ReqLLM.Providers.OpenAITest do
     end
 
     test "prepare_request merges custom Finch options with the request timeout" do
-      {:ok, model} = ReqLLM.model("openai:gpt-4-turbo")
+      {:ok, model} = ReqLLM.model(%{provider: :openai, id: "gpt-4-turbo"})
       context = context_fixture()
 
       {:ok, request} =
@@ -91,7 +91,7 @@ defmodule ReqLLM.Providers.OpenAITest do
     end
 
     test "prepare_request honors caller retry limits in chat and object pipelines" do
-      {:ok, chat_model} = ReqLLM.model("openai:gpt-4-turbo")
+      {:ok, chat_model} = ReqLLM.model(%{provider: :openai, id: "gpt-4-turbo"})
       {:ok, object_model} = ReqLLM.model("openai:gpt-4o-mini")
       {:ok, schema} = ReqLLM.Schema.compile(name: [type: :string, required: true])
 
@@ -497,7 +497,7 @@ defmodule ReqLLM.Providers.OpenAITest do
     end
 
     test "prepare_request configures authentication and pipeline for chat" do
-      {:ok, model} = ReqLLM.model("openai:gpt-4-turbo")
+      {:ok, model} = ReqLLM.model(%{provider: :openai, id: "gpt-4-turbo"})
       prompt = "Hello, world!"
       opts = [temperature: 0.5, max_tokens: 50]
 
@@ -713,7 +713,7 @@ defmodule ReqLLM.Providers.OpenAITest do
     end
 
     test "prepare_request uses longer timeout for reasoning models (Responses API)" do
-      {:ok, chat_model} = ReqLLM.model("openai:gpt-4-turbo")
+      {:ok, chat_model} = ReqLLM.model(%{provider: :openai, id: "gpt-4-turbo"})
       {:ok, reasoning_model} = ReqLLM.model("openai:gpt-5")
       context = context_fixture()
 
@@ -991,7 +991,7 @@ defmodule ReqLLM.Providers.OpenAITest do
     end
 
     test "encode_body for o3 models uses max_completion_tokens" do
-      {:ok, model} = ReqLLM.model("openai:o3-mini")
+      {:ok, model} = ReqLLM.model(%{provider: :openai, id: "o3-mini"})
       context = context_fixture()
 
       mock_request = %Req.Request{
@@ -1036,7 +1036,7 @@ defmodule ReqLLM.Providers.OpenAITest do
     end
 
     test "encode_body for o4 models uses max_completion_tokens" do
-      {:ok, model} = ReqLLM.model("openai:o4-mini")
+      {:ok, model} = ReqLLM.model(%{provider: :openai, id: "o4-mini"})
       context = context_fixture()
 
       mock_request = %Req.Request{
@@ -1412,7 +1412,7 @@ defmodule ReqLLM.Providers.OpenAITest do
     end
 
     test "translate_options for o3 models renames max_tokens and drops temperature" do
-      {:ok, model} = ReqLLM.model("openai:o3-mini")
+      {:ok, model} = ReqLLM.model(%{provider: :openai, id: "o3-mini"})
 
       opts = [max_tokens: 2000, temperature: 1.0, frequency_penalty: 0.1]
       {translated_opts, warnings} = OpenAI.translate_options(:chat, model, opts)
@@ -1508,7 +1508,7 @@ defmodule ReqLLM.Providers.OpenAITest do
     end
 
     test "translate_options for o4 models renames max_tokens and drops temperature" do
-      {:ok, model} = ReqLLM.model("openai:o4-mini")
+      {:ok, model} = ReqLLM.model(%{provider: :openai, id: "o4-mini"})
       opts = [max_tokens: 3000, temperature: 0.8]
       {translated_opts, warnings} = OpenAI.translate_options(:chat, model, opts)
 
@@ -1940,7 +1940,7 @@ defmodule ReqLLM.Providers.OpenAITest do
 
   describe "logprobs support" do
     test "encode_body includes logprobs when openai_logprobs is true" do
-      {:ok, model} = ReqLLM.model("openai:gpt-3.5-turbo")
+      {:ok, model} = ReqLLM.model(%{provider: :openai, id: "gpt-3.5-turbo"})
       context = context_fixture()
 
       mock_request = %Req.Request{
@@ -1960,7 +1960,7 @@ defmodule ReqLLM.Providers.OpenAITest do
     end
 
     test "encode_body includes top_logprobs when openai_top_logprobs is set" do
-      {:ok, model} = ReqLLM.model("openai:gpt-3.5-turbo")
+      {:ok, model} = ReqLLM.model(%{provider: :openai, id: "gpt-3.5-turbo"})
       context = context_fixture()
 
       mock_request = %Req.Request{
@@ -1980,7 +1980,7 @@ defmodule ReqLLM.Providers.OpenAITest do
     end
 
     test "encode_body omits logprobs when not requested" do
-      {:ok, model} = ReqLLM.model("openai:gpt-3.5-turbo")
+      {:ok, model} = ReqLLM.model(%{provider: :openai, id: "gpt-3.5-turbo"})
       context = context_fixture()
 
       mock_request = %Req.Request{
@@ -2022,7 +2022,7 @@ defmodule ReqLLM.Providers.OpenAITest do
 
       mock_resp = %Req.Response{status: 200, body: mock_response_body}
 
-      {:ok, model} = ReqLLM.model("openai:gpt-3.5-turbo")
+      {:ok, model} = ReqLLM.model(%{provider: :openai, id: "gpt-3.5-turbo"})
       context = context_fixture()
       mock_req = %Req.Request{options: [context: context, stream: false, model: model.model]}
 
@@ -2057,7 +2057,7 @@ defmodule ReqLLM.Providers.OpenAITest do
 
       mock_resp = %Req.Response{status: 200, body: mock_response_body}
 
-      {:ok, model} = ReqLLM.model("openai:gpt-3.5-turbo")
+      {:ok, model} = ReqLLM.model(%{provider: :openai, id: "gpt-3.5-turbo"})
       context = context_fixture()
       mock_req = %Req.Request{options: [context: context, stream: false, model: model.model]}
 

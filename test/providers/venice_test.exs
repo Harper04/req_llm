@@ -86,7 +86,7 @@ defmodule ReqLLM.Providers.VeniceTest do
 
   describe "request preparation & pipeline wiring" do
     test "prepare_request creates configured request for :chat" do
-      {:ok, model} = ReqLLM.model("venice:venice-uncensored")
+      {:ok, model} = ReqLLM.model(%{provider: :venice, id: "venice-uncensored"})
       prompt = "Hello world"
       opts = [temperature: 0.7, max_tokens: 100]
 
@@ -98,7 +98,7 @@ defmodule ReqLLM.Providers.VeniceTest do
     end
 
     test "attach configures authentication and pipeline" do
-      {:ok, model} = ReqLLM.model("venice:venice-uncensored")
+      {:ok, model} = ReqLLM.model(%{provider: :venice, id: "venice-uncensored"})
       opts = [temperature: 0.5, max_tokens: 50]
 
       request = Req.new() |> Venice.attach(model, opts)
@@ -116,7 +116,7 @@ defmodule ReqLLM.Providers.VeniceTest do
     end
 
     test "rejects unsupported operations" do
-      {:ok, model} = ReqLLM.model("venice:venice-uncensored")
+      {:ok, model} = ReqLLM.model(%{provider: :venice, id: "venice-uncensored"})
       prompt = "Hello world"
 
       {:error, error} = Venice.prepare_request(:unsupported, model, prompt, [])
@@ -124,7 +124,7 @@ defmodule ReqLLM.Providers.VeniceTest do
     end
 
     test "rejects provider mismatch" do
-      {:ok, wrong_model} = ReqLLM.model("openai:gpt-4")
+      {:ok, wrong_model} = ReqLLM.model(%{provider: :openai, id: "gpt-4"})
 
       assert_raise ReqLLM.Error.Invalid.Provider, fn ->
         Req.new() |> Venice.attach(wrong_model, [])
@@ -228,7 +228,7 @@ defmodule ReqLLM.Providers.VeniceTest do
 
   describe "body encoding" do
     test "encode_body with minimal context" do
-      {:ok, model} = ReqLLM.model("venice:venice-uncensored")
+      {:ok, model} = ReqLLM.model(%{provider: :venice, id: "venice-uncensored"})
       context = context_fixture()
 
       mock_request = %Req.Request{
@@ -250,7 +250,7 @@ defmodule ReqLLM.Providers.VeniceTest do
     end
 
     test "encode_body with Venice parameters" do
-      {:ok, model} = ReqLLM.model("venice:venice-uncensored")
+      {:ok, model} = ReqLLM.model(%{provider: :venice, id: "venice-uncensored"})
       context = context_fixture()
 
       mock_request = %Req.Request{
@@ -276,7 +276,7 @@ defmodule ReqLLM.Providers.VeniceTest do
     end
 
     test "encode_body converts atom keys to string keys in venice_parameters" do
-      {:ok, model} = ReqLLM.model("venice:venice-uncensored")
+      {:ok, model} = ReqLLM.model(%{provider: :venice, id: "venice-uncensored"})
       context = context_fixture()
 
       mock_request = %Req.Request{
@@ -381,7 +381,7 @@ defmodule ReqLLM.Providers.VeniceTest do
         body: mock_json_response
       }
 
-      {:ok, model} = ReqLLM.model("venice:venice-uncensored")
+      {:ok, model} = ReqLLM.model(%{provider: :venice, id: "venice-uncensored"})
       context = context_fixture()
 
       mock_req = %Req.Request{
@@ -462,7 +462,7 @@ defmodule ReqLLM.Providers.VeniceTest do
 
   describe "usage extraction" do
     test "extract_usage with valid usage data" do
-      {:ok, model} = ReqLLM.model("venice:venice-uncensored")
+      {:ok, model} = ReqLLM.model(%{provider: :venice, id: "venice-uncensored"})
 
       body_with_usage = %{
         "usage" => %{
@@ -479,14 +479,14 @@ defmodule ReqLLM.Providers.VeniceTest do
     end
 
     test "extract_usage with missing usage data" do
-      {:ok, model} = ReqLLM.model("venice:venice-uncensored")
+      {:ok, model} = ReqLLM.model(%{provider: :venice, id: "venice-uncensored"})
       body_without_usage = %{"choices" => []}
 
       {:error, :no_usage_found} = Venice.extract_usage(body_without_usage, model)
     end
 
     test "extract_usage with invalid body type" do
-      {:ok, model} = ReqLLM.model("venice:venice-uncensored")
+      {:ok, model} = ReqLLM.model(%{provider: :venice, id: "venice-uncensored"})
 
       {:error, :invalid_body} = Venice.extract_usage("invalid", model)
       {:error, :invalid_body} = Venice.extract_usage(nil, model)
@@ -500,7 +500,7 @@ defmodule ReqLLM.Providers.VeniceTest do
     end
 
     test "can load specific Venice models" do
-      {:ok, model} = ReqLLM.model("venice:venice-uncensored")
+      {:ok, model} = ReqLLM.model(%{provider: :venice, id: "venice-uncensored"})
       assert model.provider == :venice
       assert model.id == "venice-uncensored"
 

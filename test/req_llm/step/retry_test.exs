@@ -314,7 +314,7 @@ defmodule ReqLLM.Step.RetryTest do
     test "retry configuration is automatically applied to provider requests" do
       # Verify that when we create a request through Provider.Defaults,
       # it has retry configured
-      {:ok, model} = ReqLLM.model("openai:gpt-4")
+      {:ok, model} = ReqLLM.model(%{provider: :openai, id: "gpt-4"})
 
       request =
         ReqLLM.Provider.Defaults.default_attach(
@@ -332,7 +332,7 @@ defmodule ReqLLM.Step.RetryTest do
     end
 
     test "default_attach preserves an existing finch option" do
-      {:ok, model} = ReqLLM.model("openai:gpt-4")
+      {:ok, model} = ReqLLM.model(%{provider: :openai, id: "gpt-4"})
 
       request =
         ReqLLM.Provider.Defaults.default_attach(
@@ -346,7 +346,7 @@ defmodule ReqLLM.Step.RetryTest do
     end
 
     test "default_attach preserves caller max_retries" do
-      {:ok, model} = ReqLLM.model("openai:gpt-4")
+      {:ok, model} = ReqLLM.model(%{provider: :openai, id: "gpt-4"})
 
       request =
         ReqLLM.Provider.Defaults.default_attach(
@@ -361,7 +361,7 @@ defmodule ReqLLM.Step.RetryTest do
     end
 
     test "default_attach honors caller retry_statuses" do
-      {:ok, model} = ReqLLM.model("openai:gpt-4")
+      {:ok, model} = ReqLLM.model(%{provider: :openai, id: "gpt-4"})
 
       request =
         ReqLLM.Provider.Defaults.default_attach(
@@ -384,7 +384,7 @@ defmodule ReqLLM.Step.RetryTest do
     end
 
     test "retry function correctly identifies retryable errors" do
-      {:ok, model} = ReqLLM.model("openai:gpt-4")
+      {:ok, model} = ReqLLM.model(%{provider: :openai, id: "gpt-4"})
 
       request =
         ReqLLM.Provider.Defaults.default_attach(

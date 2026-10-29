@@ -248,6 +248,7 @@ defmodule ReqLLM.RerankTest do
                  %{provider: :cohere, id: "rerank-v3.5"},
                  query: "capital of the United States?",
                  documents: ["Carson City", "Washington, D.C.", "Saipan"],
+                 max_retries: 0,
                  req_http_options: [plug: {Req.Test, __MODULE__.HTTPError}]
                )
 

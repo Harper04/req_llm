@@ -255,7 +255,7 @@ defmodule ReqLLM.Providers.OpenAI.StructuredOutputTest do
     end
 
     test ":auto mode with old model -> :tool_strict" do
-      {:ok, model} = ReqLLM.model("openai:gpt-4")
+      {:ok, model} = ReqLLM.model(%{provider: :openai, id: "gpt-4"})
 
       opts = [
         provider_options: [openai_structured_output_mode: :auto]
@@ -267,7 +267,7 @@ defmodule ReqLLM.Providers.OpenAI.StructuredOutputTest do
     end
 
     test "explicit :json_schema mode overrides auto detection" do
-      {:ok, model} = ReqLLM.model("openai:gpt-4")
+      {:ok, model} = ReqLLM.model(%{provider: :openai, id: "gpt-4"})
 
       opts = [
         provider_options: [openai_structured_output_mode: :json_schema]
@@ -279,7 +279,7 @@ defmodule ReqLLM.Providers.OpenAI.StructuredOutputTest do
     end
 
     test "explicit :tool_strict mode overrides auto detection" do
-      {:ok, model} = ReqLLM.model("openai:gpt-4")
+      {:ok, model} = ReqLLM.model(%{provider: :openai, id: "gpt-4"})
 
       opts = [
         provider_options: [openai_structured_output_mode: :tool_strict]

@@ -100,7 +100,7 @@ defmodule ReqLLM.EmbeddingTest do
     end
 
     test "rejects non-embedding models" do
-      assert {:error, error} = Embedding.validate_model("openai:gpt-4")
+      assert {:error, error} = Embedding.validate_model("openai:gpt-4o")
       assert Exception.message(error) =~ "does not support embedding operations"
     end
 
@@ -155,7 +155,7 @@ defmodule ReqLLM.EmbeddingTest do
     end
 
     test "rejects non-embedding models" do
-      assert {:error, error} = Embedding.embed("openai:gpt-4", "Hello")
+      assert {:error, error} = Embedding.embed("openai:gpt-4o", "Hello")
       assert Exception.message(error) =~ "does not support embedding operations"
     end
 
@@ -444,7 +444,7 @@ defmodule ReqLLM.EmbeddingTest do
     end
 
     test "rejects non-embedding models" do
-      assert {:error, error} = Embedding.embed("openai:gpt-4", ["Hello"])
+      assert {:error, error} = Embedding.embed("openai:gpt-4o", ["Hello"])
       assert Exception.message(error) =~ "does not support embedding operations"
     end
   end
