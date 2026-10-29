@@ -5,9 +5,9 @@ defmodule ReqLLM.SchemaCacheTest do
 
   alias ReqLLM.Schema
   alias ReqLLM.Schema.EvictionStrategy
+  alias ReqLLM.TestSupport.ApplicationConfig
 
   @cache_table :req_llm_schema_cache
-  @config_keys [:schema_cache_max_bytes, :schema_cache_eviction_strategy]
 
   defmodule NewestFirst do
     @behaviour ReqLLM.Schema.EvictionStrategy
@@ -37,21 +37,15 @@ defmodule ReqLLM.SchemaCacheTest do
   end
 
   setup do
-    previous_config = Map.new(@config_keys, &{&1, Application.fetch_env(:req_llm, &1)})
-
-    Application.put_env(:req_llm, :schema_cache_max_bytes, 100 * 1024 * 1024)
-
-    Application.put_env(
-      :req_llm,
-      :schema_cache_eviction_strategy,
-      EvictionStrategy.FIFO
+    ApplicationConfig.put_env(
+      schema_cache_max_bytes: 100 * 1024 * 1024,
+      schema_cache_eviction_strategy: EvictionStrategy.FIFO
     )
 
     :ets.delete_all_objects(@cache_table)
 
     on_exit(fn ->
       :ets.delete_all_objects(@cache_table)
-      restore_config(previous_config)
     end)
 
     :ok
@@ -223,12 +217,5 @@ defmodule ReqLLM.SchemaCacheTest do
 
   defp schema_cache_bytes do
     :ets.info(@cache_table, :memory) * :erlang.system_info(:wordsize)
-  end
-
-  defp restore_config(config) do
-    Enum.each(config, fn
-      {key, {:ok, value}} -> Application.put_env(:req_llm, key, value)
-      {key, :error} -> Application.delete_env(:req_llm, key)
-    end)
   end
 end
