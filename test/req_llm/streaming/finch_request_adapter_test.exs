@@ -31,7 +31,7 @@ defmodule ReqLLM.Streaming.FinchRequestAdapterTest do
 
   defp build_stream(opts \\ []) do
     {:ok, server} = SinkStreamServer.start_link()
-    {:ok, model} = ReqLLM.model("openai:gpt-4")
+    {:ok, model} = ReqLLM.model(%{provider: :openai, id: "gpt-4"})
     {:ok, context} = Context.normalize("Hello")
 
     opts =

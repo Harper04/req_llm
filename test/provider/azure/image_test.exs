@@ -429,7 +429,7 @@ defmodule ReqLLM.Providers.Azure.ImageTest do
       assert {:error, %ReqLLM.Error.Invalid.Parameter{parameter: message}} =
                Azure.prepare_request(
                  :image,
-                 "azure:claude-3-5-sonnet-20241022",
+                 %{provider: :azure, id: "claude-3-5-sonnet-20241022"},
                  "A simple red square",
                  api_key: "test-api-key",
                  base_url: @traditional_base_url

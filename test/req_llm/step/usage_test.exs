@@ -50,7 +50,7 @@ defmodule ReqLLM.Step.UsageTest do
 
   describe "attach/2" do
     test "attaches usage step and preserves request structure" do
-      {:ok, model} = ReqLLM.model("openai:gpt-4")
+      {:ok, model} = ReqLLM.model(%{provider: :openai, id: "gpt-4"})
 
       request = %Req.Request{
         options: [test: "value"],
@@ -445,7 +445,7 @@ defmodule ReqLLM.Step.UsageTest do
 
     for {description, reasoning_value, expected_reasoning} <- @reasoning_scenarios do
       test "handles #{description}" do
-        {:ok, model} = ReqLLM.model("openai:gpt-4")
+        {:ok, model} = ReqLLM.model(%{provider: :openai, id: "gpt-4"})
         request = mock_request(model: model)
 
         response_body = %{
@@ -1131,7 +1131,7 @@ defmodule ReqLLM.Step.UsageTest do
     end
 
     test "handles Response struct with malformed usage gracefully" do
-      {:ok, model} = ReqLLM.model("openai:gpt-4")
+      {:ok, model} = ReqLLM.model(%{provider: :openai, id: "gpt-4"})
       request = mock_request(model: model)
 
       response_body = %ReqLLM.Response{

@@ -1374,7 +1374,7 @@ defmodule ReqLLM.Providers.AzureTest do
     end
 
     test "uses extended timeout for DeepSeek models" do
-      {:ok, model} = ReqLLM.model("azure:deepseek-r1")
+      {:ok, model} = ReqLLM.model(%{provider: :azure, id: "deepseek-r1"})
 
       {:ok, request} =
         Azure.prepare_request(
@@ -1404,7 +1404,7 @@ defmodule ReqLLM.Providers.AzureTest do
     end
 
     test "custom timeout overrides default for DeepSeek models" do
-      {:ok, model} = ReqLLM.model("azure:deepseek-r1")
+      {:ok, model} = ReqLLM.model(%{provider: :azure, id: "deepseek-r1"})
 
       {:ok, request} =
         Azure.prepare_request(

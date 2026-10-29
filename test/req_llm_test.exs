@@ -7,8 +7,8 @@ defmodule ReqLLMTest do
 
   describe "model/1 top-level API" do
     test "resolves anthropic model string spec" do
-      assert {:ok, %LLMDB.Model{provider: :anthropic, id: "claude-3-5-sonnet-20240620"}} =
-               ReqLLM.model("anthropic:claude-3-5-sonnet-20240620")
+      assert {:ok, %LLMDB.Model{provider: :anthropic, id: "claude-sonnet-4-5-20250929"}} =
+               ReqLLM.model("anthropic:claude-sonnet-4-5-20250929")
     end
 
     test "resolves anthropic haiku alias" do

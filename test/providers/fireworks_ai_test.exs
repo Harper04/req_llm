@@ -45,7 +45,7 @@ defmodule ReqLLM.Providers.FireworksAITest do
   describe "request preparation" do
     test "prepare_request for :chat creates /chat/completions request" do
       {:ok, model} =
-        ReqLLM.model("fireworks_ai:accounts/fireworks/models/kimi-k2-instruct")
+        ReqLLM.model(%{provider: :fireworks_ai, id: "accounts/fireworks/models/kimi-k2-instruct"})
 
       {:ok, request} = FireworksAI.prepare_request(:chat, model, "Hello", temperature: 0.7)
 
@@ -59,7 +59,7 @@ defmodule ReqLLM.Providers.FireworksAITest do
   describe "authentication wiring" do
     test "attach adds Bearer authorization header and pipeline steps" do
       {:ok, model} =
-        ReqLLM.model("fireworks_ai:accounts/fireworks/models/kimi-k2-instruct")
+        ReqLLM.model(%{provider: :fireworks_ai, id: "accounts/fireworks/models/kimi-k2-instruct"})
 
       request = FireworksAI.attach(Req.new(), model, [])
 
@@ -75,7 +75,7 @@ defmodule ReqLLM.Providers.FireworksAITest do
   describe "body encoding" do
     test "encode_body produces valid OpenAI-compatible JSON with Fireworks extras" do
       {:ok, model} =
-        ReqLLM.model("fireworks_ai:accounts/fireworks/models/kimi-k2-instruct")
+        ReqLLM.model(%{provider: :fireworks_ai, id: "accounts/fireworks/models/kimi-k2-instruct"})
 
       {:ok, request} =
         FireworksAI.prepare_request(:chat, model, "Hello",
@@ -108,7 +108,7 @@ defmodule ReqLLM.Providers.FireworksAITest do
 
     test "encode_body omits Fireworks extras when not provided" do
       {:ok, model} =
-        ReqLLM.model("fireworks_ai:accounts/fireworks/models/kimi-k2-instruct")
+        ReqLLM.model(%{provider: :fireworks_ai, id: "accounts/fireworks/models/kimi-k2-instruct"})
 
       {:ok, request} = FireworksAI.prepare_request(:chat, model, "Hello", temperature: 0.0)
 
@@ -142,7 +142,7 @@ defmodule ReqLLM.Providers.FireworksAITest do
 
     test "encode_body strips reasoning_details, reasoning_content, and metadata from messages" do
       {:ok, model} =
-        ReqLLM.model("fireworks_ai:accounts/fireworks/models/kimi-k2-instruct")
+        ReqLLM.model(%{provider: :fireworks_ai, id: "accounts/fireworks/models/kimi-k2-instruct"})
 
       assistant_with_extras = %ReqLLM.Message{
         role: :assistant,
@@ -188,7 +188,7 @@ defmodule ReqLLM.Providers.FireworksAITest do
 
     test "encode_body forwards tools using OpenAI shape" do
       {:ok, model} =
-        ReqLLM.model("fireworks_ai:accounts/fireworks/models/kimi-k2-instruct")
+        ReqLLM.model(%{provider: :fireworks_ai, id: "accounts/fireworks/models/kimi-k2-instruct"})
 
       tool =
         ReqLLM.Tool.new!(
@@ -253,7 +253,7 @@ defmodule ReqLLM.Providers.FireworksAITest do
   describe "reasoning_effort rendering" do
     test "atoms are rendered to Fireworks string values in the encoded body" do
       {:ok, model} =
-        ReqLLM.model("fireworks_ai:accounts/fireworks/models/kimi-k2-instruct")
+        ReqLLM.model(%{provider: :fireworks_ai, id: "accounts/fireworks/models/kimi-k2-instruct"})
 
       for {atom_value, expected} <- [
             {:none, "none"},
@@ -274,7 +274,7 @@ defmodule ReqLLM.Providers.FireworksAITest do
 
     test "provider_options reasoning_effort max renders Fireworks native value" do
       {:ok, model} =
-        ReqLLM.model("fireworks_ai:accounts/fireworks/models/kimi-k2-instruct")
+        ReqLLM.model(%{provider: :fireworks_ai, id: "accounts/fireworks/models/kimi-k2-instruct"})
 
       {:ok, request} =
         FireworksAI.prepare_request(:chat, model, "Hi",
@@ -288,7 +288,7 @@ defmodule ReqLLM.Providers.FireworksAITest do
 
     test ":default is omitted from the body" do
       {:ok, model} =
-        ReqLLM.model("fireworks_ai:accounts/fireworks/models/kimi-k2-instruct")
+        ReqLLM.model(%{provider: :fireworks_ai, id: "accounts/fireworks/models/kimi-k2-instruct"})
 
       {:ok, request} =
         FireworksAI.prepare_request(:chat, model, "Hi", reasoning_effort: :default)
@@ -302,7 +302,7 @@ defmodule ReqLLM.Providers.FireworksAITest do
   describe "tool_choice translation" do
     test "rewrites canonical tool_choice into OpenAI function shape" do
       {:ok, model} =
-        ReqLLM.model("fireworks_ai:accounts/fireworks/models/kimi-k2-instruct")
+        ReqLLM.model(%{provider: :fireworks_ai, id: "accounts/fireworks/models/kimi-k2-instruct"})
 
       tool =
         ReqLLM.Tool.new!(
@@ -328,7 +328,7 @@ defmodule ReqLLM.Providers.FireworksAITest do
   describe "extended parameter passthrough" do
     test "parallel_tool_calls and max_completion_tokens flow into body" do
       {:ok, model} =
-        ReqLLM.model("fireworks_ai:accounts/fireworks/models/kimi-k2-instruct")
+        ReqLLM.model(%{provider: :fireworks_ai, id: "accounts/fireworks/models/kimi-k2-instruct"})
 
       {:ok, request} =
         FireworksAI.prepare_request(:chat, model, "Hi",
@@ -345,7 +345,7 @@ defmodule ReqLLM.Providers.FireworksAITest do
 
     test "top_k flows from top-level and provider_options into body" do
       {:ok, model} =
-        ReqLLM.model("fireworks_ai:accounts/fireworks/models/kimi-k2-instruct")
+        ReqLLM.model(%{provider: :fireworks_ai, id: "accounts/fireworks/models/kimi-k2-instruct"})
 
       {:ok, top_level_request} =
         FireworksAI.prepare_request(:chat, model, "Hi", top_k: 40)
@@ -361,7 +361,7 @@ defmodule ReqLLM.Providers.FireworksAITest do
 
     test "tool.strict flag is preserved in the encoded tool schema" do
       {:ok, model} =
-        ReqLLM.model("fireworks_ai:accounts/fireworks/models/kimi-k2-instruct")
+        ReqLLM.model(%{provider: :fireworks_ai, id: "accounts/fireworks/models/kimi-k2-instruct"})
 
       tool =
         ReqLLM.Tool.new!(
@@ -384,7 +384,7 @@ defmodule ReqLLM.Providers.FireworksAITest do
   describe "structured output (:object) modes" do
     setup do
       {:ok, model} =
-        ReqLLM.model("fireworks_ai:accounts/fireworks/models/kimi-k2-instruct")
+        ReqLLM.model(%{provider: :fireworks_ai, id: "accounts/fireworks/models/kimi-k2-instruct"})
 
       {:ok, compiled} =
         ReqLLM.Schema.compile(
@@ -475,7 +475,7 @@ defmodule ReqLLM.Providers.FireworksAITest do
   describe "stream options" do
     test "include_usage is set on streaming requests" do
       {:ok, model} =
-        ReqLLM.model("fireworks_ai:accounts/fireworks/models/kimi-k2-instruct")
+        ReqLLM.model(%{provider: :fireworks_ai, id: "accounts/fireworks/models/kimi-k2-instruct"})
 
       {:ok, request} = FireworksAI.prepare_request(:chat, model, "Hi", stream: true)
 
@@ -488,7 +488,7 @@ defmodule ReqLLM.Providers.FireworksAITest do
 
     test "stream_options absent on non-streaming requests" do
       {:ok, model} =
-        ReqLLM.model("fireworks_ai:accounts/fireworks/models/kimi-k2-instruct")
+        ReqLLM.model(%{provider: :fireworks_ai, id: "accounts/fireworks/models/kimi-k2-instruct"})
 
       {:ok, request} = FireworksAI.prepare_request(:chat, model, "Hi", stream: false)
 

@@ -5,7 +5,7 @@ defmodule ReqLLM.GenerationTest do
 
   alias ReqLLM.{Context, Generation, Response, StreamResponse}
 
-  @chat_model "openai:gpt-4-turbo"
+  @chat_model %{provider: :openai, id: "gpt-4-turbo"}
 
   defmodule CacheBackend do
     alias ReqLLM.Context
@@ -669,6 +669,7 @@ defmodule ReqLLM.GenerationTest do
           @chat_model,
           "Return a person",
           [name: [type: :string, required: true]],
+          max_retries: 0,
           req_http_options: [plug: {Req.Test, ErrorObjectHTTP}]
         )
       end
@@ -773,6 +774,7 @@ defmodule ReqLLM.GenerationTest do
                  @chat_model,
                  "Return a person",
                  [name: [type: :string, required: true]],
+                 max_retries: 0,
                  req_http_options: [plug: {Req.Test, ErrorObjectHTTP}]
                )
 

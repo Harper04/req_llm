@@ -382,7 +382,7 @@ defmodule ReqLLM.Streaming.FinchClientTest do
 
     test "successfully creates HTTPContext with proper structure" do
       {:ok, stream_server} = MockStreamServer.start_link()
-      {:ok, model} = ReqLLM.model("openai:gpt-4")
+      {:ok, model} = ReqLLM.model(%{provider: :openai, id: "gpt-4"})
       {:ok, context} = Context.normalize("Test")
 
       result =
@@ -920,7 +920,7 @@ defmodule ReqLLM.Streaming.FinchClientTest do
 
     test "FinchClient callback does not crash when server terminates" do
       {:ok, stream_server} = TerminatingStreamServer.start_link()
-      {:ok, model} = ReqLLM.model("openai:gpt-4")
+      {:ok, model} = ReqLLM.model(%{provider: :openai, id: "gpt-4"})
       {:ok, context} = Context.normalize("Test")
 
       {:ok, task_pid, _http_context, _canonical_json} =
