@@ -40,6 +40,9 @@ defmodule ReqLLM.Transcription do
 
   """
 
+  alias ReqLLM.Provider.Adapter
+  alias ReqLLM.RequestPlan
+  alias ReqLLM.Runtime
   alias ReqLLM.Transcription.DetailedResult
   alias ReqLLM.Transcription.Result
 
@@ -168,7 +171,7 @@ defmodule ReqLLM.Transcription do
 
     with {:ok, audio_data, media_type} <- resolve_audio(audio),
          {:ok, model} <- ReqLLM.model(model_spec),
-         {:ok, provider_module} <- ReqLLM.provider(model.provider),
+         {:ok, provider_module} <- Adapter.resolve(model, :transcription),
          {:ok, opts} <-
            ReqLLM.Provider.Options.normalize_namespaced_provider_options(
              provider_module,
@@ -176,32 +179,34 @@ defmodule ReqLLM.Transcription do
              model,
              opts
            ),
-         {:ok, request} <-
-           provider_module.prepare_request(:transcription, model, audio_data, [
-             {:media_type, media_type} | opts
-           ]) do
+         {:ok, plan} <-
+           RequestPlan.from_resolved(
+             model,
+             :transcription,
+             provider_module,
+             [{:media_type, media_type} | opts],
+             :req
+           ),
+         {:ok, request} <- Runtime.prepare(plan, audio_data) do
       request = maybe_attach_usage(request, model, return_mode)
       started_at = request_started_at(return_mode)
 
-      case ReqLLM.TimeoutBudget.request(request, deadline) do
-        {:ok, %Req.Response{status: status, body: body} = response} when status in 200..299 ->
+      Runtime.execute_prepared(request, deadline, fn
+        %Req.Response{status: status, body: body} = response when status in 200..299 ->
           timings = request_timings(started_at)
 
           with {:ok, result} <- parse_transcription_response(body) do
             build_return(result, response, model, timings, return_mode)
           end
 
-        {:ok, %Req.Response{status: status, body: body}} ->
+        %Req.Response{status: status, body: body} ->
           {:error,
            ReqLLM.Error.API.Request.exception(
              reason: "HTTP #{status}: Transcription request failed",
              status: status,
              response_body: body
            )}
-
-        {:error, error} ->
-          {:error, error}
-      end
+      end)
     end
   end
 
