@@ -233,7 +233,7 @@ defmodule ReqLLM.Generation do
   defp stream_text_response(model_input, messages, opts) do
     with {:ok, model, messages, opts} <-
            resolve_model_input(model_input, messages, opts),
-         {:ok, provider_module} <- ReqLLM.ProviderDispatch.get(model, :chat, stream: true),
+         {:ok, provider_module} <- Adapter.resolve(model, :chat, stream: true),
          {:ok, opts} <-
            ReqLLM.Provider.Options.normalize_namespaced_provider_options(
              provider_module,
@@ -690,7 +690,7 @@ defmodule ReqLLM.Generation do
        ) do
     with {:ok, model, messages, opts} <-
            resolve_model_input(model_input, messages, opts),
-         {:ok, provider_module} <- ReqLLM.ProviderDispatch.get(model, :object, stream: true),
+         {:ok, provider_module} <- Adapter.resolve(model, :object, stream: true),
          {:ok, opts} <-
            ReqLLM.Provider.Options.normalize_namespaced_provider_options(
              provider_module,
@@ -702,7 +702,8 @@ defmodule ReqLLM.Generation do
          :ok <- ReqLLM.ProviderFileReference.validate_context(context, model.provider),
          {:ok, compiled_schema} <- compile_schema_source(schema_source),
          {:ok, prepared_req} <-
-           provider_module.prepare_request(
+           Adapter.prepare_request(
+             provider_module,
              :object,
              model,
              messages,

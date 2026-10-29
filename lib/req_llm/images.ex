@@ -281,7 +281,7 @@ defmodule ReqLLM.Images do
     with {:ok, model} <- ReqLLM.model(model_spec),
          :ok <- validate_streaming_model(model),
          :ok <- ReqLLM.Images.OpenAICompatible.validate_stream_options(opts),
-         {:ok, provider_module} <- ReqLLM.provider(model.provider),
+         {:ok, provider_module} <- ReqLLM.Provider.Adapter.resolve(model, :image),
          {:ok, opts} <-
            ReqLLM.Provider.Options.normalize_namespaced_provider_options(
              provider_module,

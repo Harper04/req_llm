@@ -158,6 +158,45 @@ defmodule ReqLLM.RequestPlan do
     end
   end
 
+  @doc """
+  Describes an already resolved stream without rejecting provider-owned routes.
+
+  The caller supplies the transport selected by the existing provider callback,
+  using the same plan values as `from_resolved/5`. Resolvable surfaces, options,
+  and warnings match that constructor. Surface errors and unsupported surface /
+  transport combinations are left to the provider's attachment callback, which
+  owns the existing error type, text, and transport-specific wrapping. An
+  unresolvable surface is recorded as `:provider`, not replaced with another API.
+
+  Stream startup must use `provider_module`, not dispatch on this plan's surface
+  or `api_module`, so this description never bypasses provider validation.
+  """
+  @spec from_resolved_stream(LLMDB.Model.t(), atom(), module(), keyword(), transport()) ::
+          {:ok, t()} | {:error, term()}
+  def from_resolved_stream(%LLMDB.Model{} = model, operation, provider_module, opts, transport) do
+    with :ok <- validate_options(opts),
+         :ok <- validate_resolved_transport(transport) do
+      {surface, api_module, warnings} =
+        case resolve_operation_surface(model, operation, provider_module) do
+          {:ok, surface, api_module, warnings} -> {surface, api_module, warnings}
+          {:error, _reason} -> {:provider, provider_module, []}
+        end
+
+      {:ok,
+       %__MODULE__{
+         model: model,
+         operation: operation,
+         provider: model.provider,
+         surface: surface,
+         transport: transport,
+         options: opts,
+         provider_module: provider_module,
+         api_module: api_module,
+         warnings: warnings
+       }}
+    end
+  end
+
   @doc false
   @spec openai_surface(LLMDB.Model.t()) ::
           {:ok, :openai_responses | :openai_chat_completions, module(), [binary()]}

@@ -17,8 +17,8 @@ defmodule ReqLLM.Streaming do
 
   ## Flow
 
-  1. `start_stream/4` creates StreamServer with provider configuration
-  2. FinchClient builds provider-specific HTTP request and starts streaming
+  1. `start_stream/4` describes the provider-selected route with RequestPlan
+  2. Runtime starts the selected transport on the existing StreamServer through the provider adapter
   3. HTTP task is attached to StreamServer for monitoring and cleanup
   4. StreamResponse provides lazy stream using `Stream.resource/3`
   5. Metadata task runs concurrently to collect usage and finish_reason
@@ -44,7 +44,16 @@ defmodule ReqLLM.Streaming do
 
   """
 
-  alias ReqLLM.{Context, StreamResponse, StreamResponse.MetadataHandle, StreamServer}
+  alias ReqLLM.{
+    Context,
+    RequestPlan,
+    Runtime,
+    StreamResponse,
+    StreamResponse.MetadataHandle,
+    StreamServer
+  }
+
+  alias ReqLLM.Provider.Adapter
 
   require Logger
 
@@ -108,12 +117,20 @@ defmodule ReqLLM.Streaming do
   @spec start_stream(module(), LLMDB.Model.t(), Context.t(), keyword()) ::
           {:ok, StreamResponse.t()} | {:error, term()}
   def start_stream(provider_mod, model, context, opts \\ []) do
-    transport = stream_transport(provider_mod, model, opts)
+    transport = Adapter.stream_transport(provider_mod, model, opts)
     total_timeout = ReqLLM.TimeoutBudget.total_timeout(opts)
     total_timeout_deadline = ReqLLM.TimeoutBudget.deadline(opts)
     stream_idle_timeout = ReqLLM.TimeoutBudget.stream_idle_timeout(opts)
 
     with :ok <- ReqLLM.ProviderFileReference.validate_context(context, model.provider),
+         {:ok, plan} <-
+           RequestPlan.from_resolved_stream(
+             model,
+             Keyword.get(opts, :operation, :chat),
+             provider_mod,
+             opts,
+             plan_transport(transport)
+           ),
          {:ok, server_pid} <-
            start_stream_server(
              provider_mod,
@@ -124,15 +141,7 @@ defmodule ReqLLM.Streaming do
              total_timeout_deadline,
              stream_idle_timeout
            ) do
-      build_stream_response(
-        provider_mod,
-        model,
-        context,
-        opts,
-        transport,
-        server_pid,
-        stream_idle_timeout
-      )
+      build_stream_response(plan, context, transport, server_pid, stream_idle_timeout)
     else
       {:error, reason} ->
         Logger.error("Failed to start streaming: #{inspect(reason)}")
@@ -140,24 +149,12 @@ defmodule ReqLLM.Streaming do
     end
   end
 
-  defp build_stream_response(
-         provider_mod,
-         model,
-         context,
-         opts,
-         transport,
-         server_pid,
-         stream_idle_timeout
-       ) do
+  defp build_stream_response(plan, context, transport, server_pid, stream_idle_timeout) do
+    model = plan.model
+    opts = plan.options
+
     with {:ok, _http_task_pid, http_context, canonical_json} <-
-           start_transport_streaming(
-             transport,
-             provider_mod,
-             model,
-             context,
-             Keyword.delete(opts, :pricing_context),
-             server_pid
-           ),
+           Runtime.start_stream(plan, context, server_pid),
          :ok <- set_fixture_context_if_needed(server_pid, http_context, canonical_json) do
       stream_context =
         model
@@ -240,7 +237,7 @@ defmodule ReqLLM.Streaming do
       pricing_context: Keyword.get(opts, :pricing_context),
       protocol_parser:
         protocol_parser_for_transport(transport) ||
-          provider_protocol_parser(provider_mod, model, opts),
+          Adapter.stream_protocol_parser(provider_mod, model, opts),
       fixture_path: maybe_capture_fixture(model, opts),
       total_timeout: total_timeout,
       total_timeout_deadline: total_timeout_deadline,
@@ -268,100 +265,8 @@ defmodule ReqLLM.Streaming do
     end
   end
 
-  defp start_transport_streaming(
-         :websocket,
-         provider_mod,
-         model,
-         context,
-         opts,
-         stream_server_pid
-       ) do
-    case StreamServer.start_http(
-           stream_server_pid,
-           provider_mod,
-           model,
-           context,
-           opts
-           |> Keyword.put(:stream_transport, :websocket)
-           |> Keyword.put(:defer_http_events_until_telemetry?, true),
-           ReqLLM.Finch
-         ) do
-      {:ok, task_pid, http_context, canonical_json} ->
-        {:ok, task_pid, http_context, canonical_json}
-
-      {:error, reason} ->
-        Logger.error("Failed to start WebSocket streaming: #{inspect(reason)}")
-        {:error, {:websocket_streaming_failed, reason}}
-    end
-  end
-
-  defp start_transport_streaming(:http, provider_mod, model, context, opts, stream_server_pid) do
-    start_http_streaming(provider_mod, model, context, opts, stream_server_pid)
-  end
-
-  defp start_transport_streaming(
-         :in_process,
-         provider_mod,
-         model,
-         context,
-         opts,
-         stream_server_pid
-       ) do
-    case StreamServer.start_in_process(
-           stream_server_pid,
-           provider_mod,
-           model,
-           context,
-           Keyword.put(opts, :defer_http_events_until_telemetry?, true)
-         ) do
-      {:ok, task_pid, stream_context, canonical_request} ->
-        {:ok, task_pid, stream_context, canonical_request}
-
-      {:error, reason} ->
-        Logger.error("Failed to start in-process streaming: #{inspect(reason)}")
-        {:error, {:in_process_streaming_failed, reason}}
-    end
-  end
-
-  # Start HTTP streaming through StreamServer
-  defp start_http_streaming(provider_mod, model, context, opts, stream_server_pid) do
-    finch_name = Keyword.get(opts, :finch_name, ReqLLM.Finch)
-
-    case StreamServer.start_http(
-           stream_server_pid,
-           provider_mod,
-           model,
-           context,
-           Keyword.put(opts, :defer_http_events_until_telemetry?, true),
-           finch_name
-         ) do
-      {:ok, task_pid, http_context, canonical_json} ->
-        {:ok, task_pid, http_context, canonical_json}
-
-      {:error, {:provider_build_failed, {:http2_body_too_large, body_size, protocols}}} ->
-        message = format_http2_error_message(body_size, protocols)
-        Logger.error(message)
-        {:error, {:http2_body_too_large, message}}
-
-      {:error, reason} ->
-        Logger.error("Failed to start HTTP streaming: #{inspect(reason)}")
-        {:error, {:http_streaming_failed, reason}}
-    end
-  end
-
-  defp stream_transport(provider_mod, model, opts) do
-    if function_exported?(provider_mod, :stream_transport, 2) do
-      provider_mod.stream_transport(model, opts)
-    else
-      :http
-    end
-  end
-
-  defp provider_protocol_parser(provider_mod, model, opts) do
-    if function_exported?(provider_mod, :stream_protocol_parser, 2) do
-      provider_mod.stream_protocol_parser(model, opts)
-    end
-  end
+  defp plan_transport(:http), do: :finch
+  defp plan_transport(transport), do: transport
 
   defp configured_stream_idle_timeout({:configured, timeout}), do: timeout
   defp configured_stream_idle_timeout(:legacy), do: nil
@@ -377,32 +282,6 @@ defmodule ReqLLM.Streaming do
     do: &ReqLLM.Streaming.WebSocketProtocol.parse_message/2
 
   defp protocol_parser_for_transport(_transport), do: nil
-
-  defp format_http2_error_message(body_size, protocols) do
-    size_kb = div(body_size, 1024)
-
-    """
-    Request body (#{size_kb}KB) exceeds safe limit for mixed HTTP/1+HTTP/2 Finch pools (64KB).
-
-    This is due to a known issue in Finch's mixed-protocol ALPN implementation:
-    https://github.com/sneako/finch/issues/265
-
-    Your current pool configuration uses: #{inspect(protocols)}
-
-    To fix this, configure ReqLLM to use HTTP/1-only pools (recommended default):
-
-        config :req_llm,
-          stream_pool_protocols: [:http1]
-
-    If you know all target providers support HTTP/2, HTTP/2-only pools are also supported:
-
-        config :req_llm,
-          stream_pool_protocols: [:http2]
-
-    See the ReqLLM README section "HTTP/2 Configuration (Advanced)" for more details:
-    https://github.com/agentjido/req_llm#http2-configuration-advanced
-    """
-  end
 
   defp maybe_capture_fixture(model, opts) do
     case Code.ensure_loaded(ReqLLM.Test.Fixtures) do
