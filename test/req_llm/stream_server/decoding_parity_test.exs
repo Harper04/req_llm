@@ -3,8 +3,8 @@ defmodule ReqLLM.StreamServer.DecodingParityTest do
 
   import ExUnit.CaptureLog
 
-  alias ReqLLM.{StreamChunk, StreamServer}
   alias ReqLLM.Providers.{AmazonBedrock, OpenAI}
+  alias ReqLLM.{StreamChunk, StreamServer}
 
   test "SSE preserves content, metadata and order across byte boundaries" do
     model = %LLMDB.Model{
@@ -115,10 +115,10 @@ defmodule ReqLLM.StreamServer.DecodingParityTest do
   end
 
   defp run_stream(provider, model, input, parser) do
-    {:ok, server} =
-      StreamServer.start_link(provider_mod: provider, model: model, protocol_parser: parser)
-
-    on_exit(fn -> if Process.alive?(server), do: GenServer.stop(server) end)
+    server =
+      start_supervised!(
+        {StreamServer, provider_mod: provider, model: model, protocol_parser: parser}
+      )
 
     for <<byte <- input>> do
       assert :ok = StreamServer.http_event(server, {:data, <<byte>>})
