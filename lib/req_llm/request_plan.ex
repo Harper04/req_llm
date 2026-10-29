@@ -15,15 +15,49 @@ defmodule ReqLLM.RequestPlan do
   ]
   defstruct @enforce_keys ++ [warnings: []]
 
+  @type operation ::
+          :chat
+          | :object
+          | :embedding
+          | :image
+          | :speech
+          | :transcription
+          | :rerank
+          | :ocr
+          | :video
+          | :video_query
+          | :video_upload
+          | :video_retrieve
+          | :compact
+          | :evaluate
+
+  @operations [
+    :chat,
+    :object,
+    :embedding,
+    :image,
+    :speech,
+    :transcription,
+    :rerank,
+    :ocr,
+    :video,
+    :video_query,
+    :video_upload,
+    :video_retrieve,
+    :compact,
+    :evaluate
+  ]
+
   @type surface ::
-          :openai_responses
+          :provider
+          | :openai_responses
           | :openai_chat_completions
           | :anthropic_messages
-  @type transport :: :req | :finch | :websocket
+  @type transport :: :req | :finch | :websocket | :in_process
 
   @type t :: %__MODULE__{
           model: LLMDB.Model.t(),
-          operation: :chat | :object,
+          operation: operation(),
           provider: atom(),
           surface: surface(),
           transport: transport(),
@@ -80,6 +114,48 @@ defmodule ReqLLM.RequestPlan do
     invalid_parameter("options must be a keyword list, got: #{inspect(opts)}")
   end
 
+  @doc """
+  Describes an operation after its boundary has resolved the model, selected the
+  provider module, and merged its options.
+
+  This constructor does not resolve or enrich the model, look up a provider,
+  process options, or call transport callbacks. The caller supplies the selected
+  transport using plan values: `:req` for buffered requests, `:finch` for HTTP
+  streams, `:websocket`, or `:in_process`. Options retain their order and values.
+
+  OpenAI and Anthropic chat/object operations retain their existing surface
+  resolution. Other routes use `:provider` with the selected provider module as
+  `api_module`; their current callbacks still own endpoint and payload selection.
+  Single and batch embeddings share `:embedding`. Video submission, polling,
+  upload and retrieval use their existing distinct provider operation atoms.
+
+  This is a description, not a capability check or an execution entry point.
+  `build/3` remains the compatibility boundary for existing chat/object callers
+  and the public diagnostic.
+  """
+  @spec from_resolved(LLMDB.Model.t(), operation(), module(), keyword(), transport()) ::
+          {:ok, t()} | {:error, term()}
+  def from_resolved(%LLMDB.Model{} = model, operation, provider_module, opts, transport) do
+    with :ok <- validate_options(opts),
+         :ok <- validate_resolved_operation(operation),
+         :ok <- validate_resolved_transport(transport),
+         {:ok, surface, api_module, warnings} <-
+           resolve_operation_surface(model, operation, provider_module) do
+      {:ok,
+       %__MODULE__{
+         model: model,
+         operation: operation,
+         provider: model.provider,
+         surface: surface,
+         transport: transport,
+         options: opts,
+         provider_module: provider_module,
+         api_module: api_module,
+         warnings: warnings
+       }}
+    end
+  end
+
   @doc false
   @spec openai_surface(LLMDB.Model.t()) ::
           {:ok, :openai_responses | :openai_chat_completions, module(), [binary()]}
@@ -91,6 +167,27 @@ defmodule ReqLLM.RequestPlan do
   def openai_surface(%LLMDB.Model{provider: provider}) do
     invalid_parameter("OpenAI surface resolution does not support provider #{inspect(provider)}")
   end
+
+  defp validate_resolved_operation(operation) when operation in @operations, do: :ok
+
+  defp validate_resolved_operation(operation),
+    do: invalid_parameter("unsupported request-plan operation: #{inspect(operation)}")
+
+  defp validate_resolved_transport(transport)
+       when transport in [:req, :finch, :websocket, :in_process],
+       do: :ok
+
+  defp validate_resolved_transport(transport),
+    do: invalid_parameter("unsupported request-plan transport: #{inspect(transport)}")
+
+  defp resolve_operation_surface(model, operation, provider_module)
+       when operation in [:chat, :object] and
+              provider_module in [ReqLLM.Providers.OpenAI, ReqLLM.Providers.Anthropic] do
+    resolve_surface(model, provider_module)
+  end
+
+  defp resolve_operation_surface(_model, _operation, provider_module),
+    do: {:ok, :provider, provider_module, []}
 
   defp validate_options(opts) do
     if Keyword.keyword?(opts) do
