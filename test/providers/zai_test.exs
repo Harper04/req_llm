@@ -4,6 +4,7 @@ defmodule ReqLLM.Providers.ZaiTest do
 
   Requests use explicit API keys, and encoding tests only transform in-memory data.
   No shared environment or provider configuration is changed.
+  Concurrent provider-registration tests preserve the Z.AI registry entries.
   """
 
   use ExUnit.Case, async: true
