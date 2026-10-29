@@ -14,6 +14,7 @@ defmodule ReqLLM.ProviderCase do
   ## Automatic Setup
 
   - Sets appropriate API key environment variables
+  - Restores their original values after each test
   - Imports helper functions for fixtures and assertions
   """
 
@@ -36,6 +37,15 @@ defmodule ReqLLM.ProviderCase do
       setup do
         if @provider do
           env_key = ReqLLM.ProviderCase.env_key_for(@provider)
+          original_value = System.get_env(env_key)
+
+          on_exit(fn ->
+            case original_value do
+              nil -> System.delete_env(env_key)
+              value -> System.put_env(env_key, value)
+            end
+          end)
+
           System.put_env(env_key, "test-key-12345")
         end
 
