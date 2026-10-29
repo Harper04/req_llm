@@ -39,7 +39,7 @@ defmodule ReqLLM.StreamServer do
 
   The server maintains state for:
 
-  - `provider_mod`: Provider module for event decoding
+  - `provider_mod`: Provider module recorded at session startup
   - `model`: ReqLLM.Model struct for provider context
   - `decoder`: Pure protocol and provider decoding state
   - `queue`: Token chunks awaiting consumer retrieval

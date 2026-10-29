@@ -43,6 +43,17 @@ defmodule ReqLLM.Streaming.DecoderTest do
     @moduledoc false
   end
 
+  defmodule LegacyProvider do
+    @moduledoc false
+
+    def init_stream_state(%LLMDB.Model{extra: %{wire: %{protocol: :legacy}}}), do: %{}
+  end
+
+  test "canonical streams skip legacy provider initialization" do
+    decoder = new_decoder(provider_mod: LegacyProvider, canonical_stream?: true)
+    assert {:ok, [], false, _decoder} = Decoder.decode("", decoder)
+  end
+
   test "decodes partial SSE events with no process and preserves multi-chunk order and state" do
     decoder = new_decoder()
     assert {:ok, [], false, decoder} = Decoder.decode("data: o", decoder)

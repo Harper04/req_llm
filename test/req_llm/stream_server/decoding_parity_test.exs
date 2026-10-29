@@ -3,8 +3,23 @@ defmodule ReqLLM.StreamServer.DecodingParityTest do
 
   import ExUnit.CaptureLog
 
-  alias ReqLLM.Providers.{AmazonBedrock, OpenAI}
-  alias ReqLLM.{StreamChunk, StreamServer}
+  alias ReqLLM.Providers.{AmazonBedrock, Groq, OpenAI}
+  alias ReqLLM.{StreamChunk, StreamServer, Telemetry}
+
+  defmodule FlushProvider do
+    @moduledoc false
+
+    def init_stream_state(_model), do: 0
+
+    def decode_stream_event(%{data: "pending"}, _model, count) do
+      {[StreamChunk.thinking("pending")], count + 1}
+    end
+
+    def flush_stream_state(model, count) do
+      send(model.extra.test_pid, {:flush_order, {:provider_flush, count}})
+      {[StreamChunk.text("suffix:#{count}")], count}
+    end
+  end
 
   test "SSE preserves content, metadata and order across byte boundaries" do
     model = %LLMDB.Model{
@@ -113,6 +128,65 @@ defmodule ReqLLM.StreamServer.DecodingParityTest do
     assert :ok = StreamServer.http_event(server, :done)
     assert collect(server) == [StreamChunk.text("http")]
   end
+
+  test "unterminated Groq SSE emits protocol content before the buffered provider suffix" do
+    model = %LLMDB.Model{provider: :groq, id: "qwen/qwen3-32b"}
+    server = start_supervised!({StreamServer, provider_mod: Groq, model: model})
+    input = ~s(data: {"choices":[{"delta":{"content":"Hello world!"}}]})
+
+    assert :ok = StreamServer.http_event(server, {:data, input})
+    assert :ok = StreamServer.http_event(server, :done)
+    assert collect(server) == [StreamChunk.text("Hello "), StreamChunk.text("world!")]
+  end
+
+  test "protocol flush emits chunk telemetry before invoking the provider flush callback" do
+    model = %LLMDB.Model{
+      provider: :anthropic,
+      id: "test-reasoning-model",
+      capabilities: %{reasoning: %{enabled: true}},
+      extra: %{test_pid: self()}
+    }
+
+    context =
+      model
+      |> Telemetry.new_context([reasoning_effort: :high], mode: :stream, transport: :finch)
+      |> Telemetry.start_request(%{
+        "thinking" => %{"type" => "enabled", "budget_tokens" => 4096}
+      })
+
+    handler = "flush-order-#{System.unique_integer([:positive])}"
+
+    :ok =
+      :telemetry.attach(
+        handler,
+        [:req_llm, :reasoning, :update],
+        &__MODULE__.observe_flush/4,
+        {self(), context.request_id}
+      )
+
+    on_exit(fn -> :telemetry.detach(handler) end)
+    server = start_supervised!({StreamServer, provider_mod: FlushProvider, model: model})
+
+    assert :ok = StreamServer.set_telemetry_context(server, context)
+    assert :ok = StreamServer.http_event(server, {:data, "data: pending"})
+    assert :ok = StreamServer.http_event(server, :done)
+
+    assert_receive {:flush_order, first}
+    assert_receive {:flush_order, second}
+    assert [first, second] == [:protocol_chunk_telemetry, {:provider_flush, 1}]
+    assert collect(server) == [StreamChunk.thinking("pending"), StreamChunk.text("suffix:1")]
+  end
+
+  def observe_flush(
+        _event,
+        _measurements,
+        %{request_id: id, milestone: :content_started},
+        {pid, id}
+      ) do
+    send(pid, {:flush_order, :protocol_chunk_telemetry})
+  end
+
+  def observe_flush(_event, _measurements, _metadata, _config), do: :ok
 
   defp run_stream(provider, model, input, parser) do
     server =
