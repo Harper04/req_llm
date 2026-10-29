@@ -123,7 +123,7 @@ defmodule ReqLLM.InProcessStreamingTest do
   end
 
   setup do
-    ReqLLM.Test.ProviderRegistration.register_provider(:canonical_stream_test, CanonicalProvider)
+    ReqLLM.Test.ProviderRegistration.register_provider(CanonicalProvider)
   end
 
   test "a registered provider streams canonical chunks through the public API" do
