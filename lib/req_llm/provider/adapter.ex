@@ -4,16 +4,20 @@ defmodule ReqLLM.Provider.Adapter do
   @doc """
   Selects the existing provider for an already resolved model. Only chat and
   object requests use the catalog gateway fallback; all other operations retain
-  the provider registry lookup. Options reach ProviderDispatch unchanged.
+  the provider registry lookup. `dispatch_opts` are the existing dispatch options,
+  currently `[]` for buffered requests or `[stream: true]` for streams, not the
+  complete request options. Preserve each call site's dispatch options when
+  migrating it; they reach ProviderDispatch unchanged.
   """
   @spec resolve(LLMDB.Model.t(), atom(), keyword()) :: {:ok, module()} | {:error, term()}
-  def resolve(model, operation, opts \\ [])
+  def resolve(model, operation, dispatch_opts \\ [])
 
-  def resolve(%LLMDB.Model{} = model, operation, opts) when operation in [:chat, :object] do
-    ReqLLM.ProviderDispatch.get(model, operation, opts)
+  def resolve(%LLMDB.Model{} = model, operation, dispatch_opts)
+      when operation in [:chat, :object] do
+    ReqLLM.ProviderDispatch.get(model, operation, dispatch_opts)
   end
 
-  def resolve(%LLMDB.Model{} = model, _operation, _opts) do
+  def resolve(%LLMDB.Model{} = model, _operation, _dispatch_opts) do
     ReqLLM.provider(model.provider)
   end
 

@@ -21,6 +21,12 @@ defmodule ReqLLM.Provider.AdapterDispatchTest do
     def decode_response(request_response), do: request_response
   end
 
+  defmodule CatalogOverrideProvider do
+    use ReqLLM.Provider,
+      id: :llmapi,
+      default_base_url: "https://adapter.example/v1"
+  end
+
   setup_all do
     for provider <- [DefaultProvider, BareProvider] do
       assert {:ok, id} = ReqLLM.Providers.register(provider)
@@ -30,7 +36,7 @@ defmodule ReqLLM.Provider.AdapterDispatchTest do
     ReqLLM.Test.CatalogGatewayCatalog.install!()
   end
 
-  test "registered default and bare providers take priority over catalog metadata" do
+  test "registered default and bare providers resolve without catalog execution metadata" do
     for provider <- [DefaultProvider, BareProvider], operation <- [:chat, :object] do
       model = %LLMDB.Model{provider: provider.provider_id(), id: "not-in-the-catalog"}
 
@@ -38,6 +44,31 @@ defmodule ReqLLM.Provider.AdapterDispatchTest do
 
       assert Adapter.resolve(model, operation, stream: true) ==
                ReqLLM.ProviderDispatch.get(model, operation, stream: true)
+    end
+  end
+
+  test "registered provider takes priority over an executable catalog gateway", %{model: model} do
+    previous_provider = ReqLLM.Providers.get(:llmapi)
+
+    on_exit(fn ->
+      case previous_provider do
+        {:ok, provider} -> ReqLLM.Providers.register!(provider)
+        {:error, _} -> ReqLLM.Providers.unregister(:llmapi)
+      end
+    end)
+
+    assert {:ok, :llmapi} = ReqLLM.Providers.register(CatalogOverrideProvider)
+    object_contract = Map.fetch!(model.execution, :text)
+    model = %{model | execution: Map.put(model.execution, :object, object_contract)}
+
+    for operation <- [:chat, :object], dispatch_opts <- [[], [stream: true]] do
+      assert {:ok, %{base_url: "https://api.llmapi.ai/v1", path: "/chat/completions"}} =
+               ReqLLM.Providers.CatalogGateway.contract(model, operation, dispatch_opts)
+
+      assert Adapter.resolve(model, operation, dispatch_opts) == {:ok, CatalogOverrideProvider}
+
+      assert Adapter.resolve(model, operation, dispatch_opts) ==
+               ReqLLM.ProviderDispatch.get(model, operation, dispatch_opts)
     end
   end
 
