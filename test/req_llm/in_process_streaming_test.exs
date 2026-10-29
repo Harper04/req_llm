@@ -122,9 +122,8 @@ defmodule ReqLLM.InProcessStreamingTest do
     def attach_in_process_stream(_model, _context, _opts), do: {:error, :boom}
   end
 
-  setup_all do
-    assert {:ok, :canonical_stream_test} = ReqLLM.Providers.register(CanonicalProvider)
-    on_exit(fn -> ReqLLM.Providers.unregister(:canonical_stream_test) end)
+  setup do
+    ReqLLM.Test.ProviderRegistration.register_provider(:canonical_stream_test, CanonicalProvider)
   end
 
   test "a registered provider streams canonical chunks through the public API" do
