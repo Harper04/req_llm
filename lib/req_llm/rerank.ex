@@ -24,7 +24,9 @@ defmodule ReqLLM.Rerank do
   import ReqLLM.Provider.Utils, only: [maybe_put: 3]
 
   alias LLMDB.Model
+  alias ReqLLM.RequestPlan
   alias ReqLLM.RerankResponse
+  alias ReqLLM.Runtime
 
   @recommended_batch_size 1000
 
@@ -240,16 +242,21 @@ defmodule ReqLLM.Rerank do
     request_opts = Keyword.drop(opts, [:batch_size, :query, :documents])
     request_opts = maybe_delete_top_n(request_opts, single_batch?)
 
-    Enum.reduce_while(batched_documents, {:ok, []}, fn {batch_docs, offset}, {:ok, acc} ->
-      case rerank_batch(provider_module, model, query, batch_docs, request_opts, deadline) do
-        {:ok, response_body} -> {:cont, {:ok, [{response_body, offset} | acc]}}
-        {:error, error} -> {:halt, {:error, error}}
-      end
-    end)
-    |> then(fn
-      {:ok, responses} -> {:ok, Enum.reverse(responses)}
-      {:error, error} -> {:error, error}
-    end)
+    with {:ok, plan} <-
+           RequestPlan.from_resolved(model, :rerank, provider_module, request_opts, :req) do
+      Enum.reduce_while(batched_documents, {:ok, []}, fn {batch_docs, offset}, {:ok, acc} ->
+        input = %{query: query, documents: batch_docs}
+
+        case Runtime.execute(plan, input, deadline, &handle_response/1) do
+          {:ok, response} -> {:cont, {:ok, [{response, offset} | acc]}}
+          {:error, error} -> {:halt, {:error, error}}
+        end
+      end)
+      |> then(fn
+        {:ok, responses} -> {:ok, Enum.reverse(responses)}
+        {:error, error} -> {:error, error}
+      end)
+    end
   end
 
   defp effective_batch_size(documents, nil) when length(documents) > @recommended_batch_size do
@@ -271,29 +278,17 @@ defmodule ReqLLM.Rerank do
   defp maybe_delete_top_n(opts, true), do: opts
   defp maybe_delete_top_n(opts, false), do: Keyword.delete(opts, :top_n)
 
-  defp rerank_batch(provider_module, model, query, documents, opts, deadline) do
-    with {:ok, request} <-
-           provider_module.prepare_request(
-             :rerank,
-             model,
-             %{query: query, documents: documents},
-             opts
-           ),
-         {:ok, %Req.Response{status: status} = response} when status in 200..299 <-
-           ReqLLM.TimeoutBudget.request(request, deadline) do
-      {:ok, response}
-    else
-      {:ok, %Req.Response{status: status, body: body}} ->
-        {:error,
-         ReqLLM.Error.API.Request.exception(
-           reason: "HTTP #{status}: Rerank request failed",
-           status: status,
-           response_body: body
-         )}
+  defp handle_response(%Req.Response{status: status} = response) when status in 200..299 do
+    {:ok, response}
+  end
 
-      {:error, error} ->
-        {:error, error}
-    end
+  defp handle_response(%Req.Response{status: status, body: body}) do
+    {:error,
+     ReqLLM.Error.API.Request.exception(
+       reason: "HTTP #{status}: Rerank request failed",
+       status: status,
+       response_body: body
+     )}
   end
 
   defp build_response(model, query, opts, batch_responses) do

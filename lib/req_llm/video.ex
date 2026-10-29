@@ -32,6 +32,8 @@ defmodule ReqLLM.Video do
   """
 
   alias LLMDB.Model
+  alias ReqLLM.RequestPlan
+  alias ReqLLM.Runtime
 
   @terminal_statuses [:succeeded, :failed, :cancelled]
   @type file_id :: String.t() | integer()
@@ -189,21 +191,8 @@ defmodule ReqLLM.Video do
            ),
          {:ok, content} <- validate_content(content),
          {:ok, content} <- maybe_upload_content(model, content, opts, deadline),
-         {:ok, request} <- provider_module.prepare_request(:video, model, content, opts),
-         {:ok, %Req.Response{status: status, body: %Task{} = task}} when status in 200..299 <-
-           ReqLLM.TimeoutBudget.request(request, deadline) do
-      {:ok, task}
-    else
-      {:ok, %Req.Response{status: status, body: body}} ->
-        {:error,
-         ReqLLM.Error.API.Request.exception(
-           reason: "HTTP #{status}: Request failed",
-           status: status,
-           response_body: body
-         )}
-
-      {:error, error} ->
-        {:error, error}
+         {:ok, plan} <- RequestPlan.from_resolved(model, :video, provider_module, opts, :req) do
+      Runtime.execute(plan, content, deadline, &handle_task_response/1)
     end
   end
 
@@ -221,21 +210,9 @@ defmodule ReqLLM.Video do
 
     with {:ok, model} <- validate_model(model_spec),
          {:ok, provider_module} <- ReqLLM.provider(model.provider),
-         {:ok, request} <- provider_module.prepare_request(:video_query, model, task_id, opts),
-         {:ok, %Req.Response{status: status, body: %Task{} = task}} when status in 200..299 <-
-           ReqLLM.TimeoutBudget.request(request, deadline) do
-      {:ok, task}
-    else
-      {:ok, %Req.Response{status: status, body: body}} ->
-        {:error,
-         ReqLLM.Error.API.Request.exception(
-           reason: "HTTP #{status}: Request failed",
-           status: status,
-           response_body: body
-         )}
-
-      {:error, error} ->
-        {:error, error}
+         {:ok, plan} <-
+           RequestPlan.from_resolved(model, :video_query, provider_module, opts, :req) do
+      Runtime.execute(plan, task_id, deadline, &handle_task_response/1)
     end
   end
 
@@ -265,8 +242,9 @@ defmodule ReqLLM.Video do
     with {:ok, wait_opts, request_opts} <- validate_wait_options(opts),
          {:ok, model} <- validate_model(model_spec),
          {:ok, provider_module} <- ReqLLM.provider(model.provider),
-         {:ok, request} <-
-           provider_module.prepare_request(:video_query, model, task_id, request_opts) do
+         {:ok, plan} <-
+           RequestPlan.from_resolved(model, :video_query, provider_module, request_opts, :req),
+         {:ok, request} <- Runtime.prepare(plan, task_id) do
       wait_deadline = ReqLLM.TimeoutBudget.deadline(total_timeout: wait_opts[:timeout])
 
       do_wait(
@@ -285,7 +263,7 @@ defmodule ReqLLM.Video do
     else
       request_deadline = earliest_deadline(wait_deadline, ReqLLM.TimeoutBudget.deadline(opts))
 
-      case query_request(request, request_deadline) do
+      case Runtime.execute_prepared(request, request_deadline, &handle_task_response/1) do
         {:ok, %Task{status: status} = task} when status in @terminal_statuses ->
           {:ok, task}
 
@@ -302,22 +280,20 @@ defmodule ReqLLM.Video do
     end
   end
 
-  defp query_request(request, deadline) do
-    case ReqLLM.TimeoutBudget.request(request, deadline) do
-      {:ok, %Req.Response{status: status, body: %Task{} = task}} when status in 200..299 ->
-        {:ok, task}
+  defp handle_task_response(%Req.Response{status: status, body: %Task{} = task})
+       when status in 200..299 do
+    {:ok, task}
+  end
 
-      {:ok, %Req.Response{status: status, body: body}} ->
-        {:error,
-         ReqLLM.Error.API.Request.exception(
-           reason: "HTTP #{status}: Request failed",
-           status: status,
-           response_body: body
-         )}
+  defp handle_task_response(response), do: request_error(response)
 
-      {:error, error} ->
-        {:error, error}
-    end
+  defp request_error(%Req.Response{status: status, body: body}) do
+    {:error,
+     ReqLLM.Error.API.Request.exception(
+       reason: "HTTP #{status}: Request failed",
+       status: status,
+       response_body: body
+     )}
   end
 
   defp continue_wait(request, poll_interval, wait_deadline, retries_left, opts) do
@@ -381,21 +357,9 @@ defmodule ReqLLM.Video do
 
     with {:ok, model} <- validate_model(model_spec),
          {:ok, provider_module} <- ReqLLM.provider(model.provider),
-         {:ok, request} <- provider_module.prepare_request(:video_retrieve, model, file_id, opts),
-         {:ok, %Req.Response{status: status, body: body}} when status in 200..299 <-
-           ReqLLM.TimeoutBudget.request(request, deadline) do
-      {:ok, body}
-    else
-      {:ok, %Req.Response{status: status, body: body}} ->
-        {:error,
-         ReqLLM.Error.API.Request.exception(
-           reason: "HTTP #{status}: Request failed",
-           status: status,
-           response_body: body
-         )}
-
-      {:error, error} ->
-        {:error, error}
+         {:ok, plan} <-
+           RequestPlan.from_resolved(model, :video_retrieve, provider_module, opts, :req) do
+      Runtime.execute(plan, file_id, deadline, &handle_retrieve_response/1)
     end
   end
 
@@ -537,24 +501,25 @@ defmodule ReqLLM.Video do
 
   defp upload_file_with_deadline(model, file_binary, opts, deadline) do
     with {:ok, provider_module} <- ReqLLM.provider(model.provider),
-         {:ok, request} <-
-           provider_module.prepare_request(:video_upload, model, file_binary, opts),
-         {:ok, %Req.Response{status: status, body: %File{} = file}} when status in 200..299 <-
-           ReqLLM.TimeoutBudget.request(request, deadline) do
-      {:ok, file}
-    else
-      {:ok, %Req.Response{status: status, body: body}} ->
-        {:error,
-         ReqLLM.Error.API.Request.exception(
-           reason: "HTTP #{status}: Request failed",
-           status: status,
-           response_body: body
-         )}
-
-      {:error, error} ->
-        {:error, error}
+         {:ok, plan} <-
+           RequestPlan.from_resolved(model, :video_upload, provider_module, opts, :req) do
+      Runtime.execute(plan, file_binary, deadline, &handle_upload_response/1)
     end
   end
+
+  defp handle_upload_response(%Req.Response{status: status, body: %File{} = file})
+       when status in 200..299 do
+    {:ok, file}
+  end
+
+  defp handle_upload_response(response), do: request_error(response)
+
+  defp handle_retrieve_response(%Req.Response{status: status, body: body})
+       when status in 200..299 do
+    {:ok, body}
+  end
+
+  defp handle_retrieve_response(response), do: request_error(response)
 
   defp validate_content(content) when is_list(content) do
     if Keyword.keyword?(content) do
