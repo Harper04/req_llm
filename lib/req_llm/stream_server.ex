@@ -1,13 +1,12 @@
 defmodule ReqLLM.StreamServer do
   @moduledoc """
-  GenServer that manages streaming LLM sessions with backpressure and SSE parsing.
+  GenServer that manages streaming LLM sessions with backpressure.
 
   StreamServer acts as a bridge between HTTP streaming clients (like FinchClient)
   and consumers, providing:
 
-  - SSE event parsing across HTTP chunk boundaries
+  - Protocol and provider decoding through the pure streaming decoder
   - Token queuing with configurable backpressure
-  - Provider-agnostic event decoding via provider callbacks
   - Completion detection and metadata extraction
   - Clean error handling and resource cleanup
 
@@ -40,10 +39,9 @@ defmodule ReqLLM.StreamServer do
 
   The server maintains state for:
 
-  - `provider_mod`: Provider module for event decoding
+  - `provider_mod`: Provider module recorded at session startup
   - `model`: ReqLLM.Model struct for provider context
-  - `provider_state`: Optional provider-specific state for stateful transformations
-  - `protocol_state`: Opaque parser state across chunks
+  - `decoder`: Pure protocol and provider decoding state
   - `queue`: Token chunks awaiting consumer retrieval
   - `status`: Current session status (`:init`, `:streaming`, `:done`, `{:error, reason}`)
   - `http_task`: HTTP task reference for monitoring
@@ -69,8 +67,8 @@ defmodule ReqLLM.StreamServer do
 
   alias ReqLLM.MapAccess
   alias ReqLLM.StreamChunk
+  alias ReqLLM.Streaming.Decoder
   alias ReqLLM.Streaming.Failure
-  alias ReqLLM.Streaming.SSE
 
   require Logger
   require ReqLLM.Debug, as: Debug
@@ -87,9 +85,7 @@ defmodule ReqLLM.StreamServer do
     :fixture_backend,
     :http_context,
     :canonical_json,
-    :protocol_parser,
-    :protocol_state,
-    :provider_state,
+    :decoder,
     :transport_cancel,
     :telemetry,
     :pending_http_exit,
@@ -164,17 +160,11 @@ defmodule ReqLLM.StreamServer do
 
     canonical_stream? = Keyword.get(opts, :canonical_stream?, false)
 
-    provider_state =
-      if not canonical_stream? and function_exported?(provider_mod, :init_stream_state, 1) do
-        provider_mod.init_stream_state(model)
-      end
-
     state = %__MODULE__{
       provider_mod: provider_mod,
       model: model,
       pricing_context: Keyword.get(opts, :pricing_context),
-      protocol_parser: Keyword.get(opts, :protocol_parser),
-      provider_state: provider_state,
+      decoder: Decoder.new(opts),
       fixture_path: Keyword.get(opts, :fixture_path),
       fixture_backend: Keyword.get(opts, :fixture_backend, ReqLLM.Step.Fixture.Backend),
       completion_cleanup_after:
@@ -439,19 +429,7 @@ defmodule ReqLLM.StreamServer do
   def init(state) do
     Process.flag(:trap_exit, true)
 
-    protocol_parser =
-      cond do
-        is_function(state.protocol_parser, 2) ->
-          state.protocol_parser
-
-        function_exported?(state.provider_mod, :parse_stream_protocol, 2) ->
-          fn chunk, buffer -> state.provider_mod.parse_stream_protocol(chunk, buffer) end
-
-        true ->
-          &ReqLLM.Provider.parse_stream_protocol/2
-      end
-
-    {:ok, %{state | protocol_parser: protocol_parser}}
+    {:ok, state}
   end
 
   @impl GenServer
@@ -905,14 +883,9 @@ defmodule ReqLLM.StreamServer do
          {:transport_fallback, :http, _reason, http_context, canonical_json},
          state
        ) do
-    protocol_parser = http_protocol_parser(state.provider_mod)
-    provider_state = reset_provider_state(state.provider_mod, state.model)
-
     new_state = %{
       state
-      | protocol_parser: protocol_parser,
-        protocol_state: nil,
-        provider_state: provider_state,
+      | decoder: Decoder.reset_http(state.decoder),
         http_context: http_context,
         canonical_json: canonical_json,
         http_status: nil,
@@ -967,7 +940,7 @@ defmodule ReqLLM.StreamServer do
       |> reset_stream_idle_timeout(chunks)
 
     new_state =
-      if terminal_chunk?(chunk) do
+      if Decoder.terminal_chunk?(chunk) do
         finalize_stream_with_fixture(%{new_state | terminated?: true})
       else
         new_state
@@ -1065,34 +1038,6 @@ defmodule ReqLLM.StreamServer do
     finalize_failed_stream(state, {:http_task_failed, reason})
   end
 
-  defp http_protocol_parser(provider_mod) do
-    if function_exported?(provider_mod, :parse_stream_protocol, 2) do
-      fn chunk, buffer -> provider_mod.parse_stream_protocol(chunk, buffer) end
-    else
-      &ReqLLM.Provider.parse_stream_protocol/2
-    end
-  end
-
-  defp reset_provider_state(provider_mod, model) do
-    if function_exported?(provider_mod, :init_stream_state, 1) do
-      provider_mod.init_stream_state(model)
-    end
-  end
-
-  defp parse_protocol_events(chunk, state) do
-    case state.protocol_parser.(chunk, state.protocol_state) do
-      {:ok, events, new_protocol_state} ->
-        {events, new_protocol_state}
-
-      {:incomplete, new_protocol_state} ->
-        {[], new_protocol_state}
-
-      {:error, reason} ->
-        Logger.warning("Protocol parse error: #{inspect(reason)}")
-        {[], state.protocol_state}
-    end
-  end
-
   defp process_data_chunk(chunk, state) do
     state =
       if state.fixture_path && is_binary(chunk) do
@@ -1109,22 +1054,20 @@ defmodule ReqLLM.StreamServer do
         state
       end
 
-    {events, new_protocol_state} = parse_protocol_events(chunk, state)
+    {stream_chunks, terminated?, decoder} =
+      case Decoder.decode(chunk, state.decoder) do
+        {:ok, chunks, terminated?, decoder} ->
+          {chunks, terminated?, decoder}
 
-    {stream_chunks, new_provider_state} = decode_protocol_events(events, state)
+        {:error, reason, decoder} ->
+          Logger.warning("Protocol parse error: #{inspect(reason)}")
+          {[], false, decoder}
+      end
 
     new_state =
-      enqueue_chunks(stream_chunks, %{
-        state
-        | protocol_state: new_protocol_state,
-          provider_state: new_provider_state
-      })
+      enqueue_chunks(stream_chunks, %{state | decoder: decoder})
       |> reset_metadata_waiter_timeouts(stream_chunks)
       |> reset_stream_idle_timeout(stream_chunks)
-
-    terminated? =
-      Enum.any?(events, &termination_event?/1) or
-        Enum.any?(stream_chunks, &terminal_chunk?/1)
 
     new_state =
       if terminated? do
@@ -1136,56 +1079,6 @@ defmodule ReqLLM.StreamServer do
     new_state = reply_to_waiting_callers(new_state)
     {:reply, :ok, new_state}
   end
-
-  defp decode_protocol_events(events, state) do
-    {stream_chunks, provider_state} =
-      Enum.reduce(events, {[], state.provider_state}, fn event, {chunks_acc, prov_state} ->
-        case SSE.process_sse_event(event) do
-          nil ->
-            {chunks_acc, prov_state}
-
-          processed_event ->
-            {new_chunks, updated_prov_state} =
-              decode_provider_event(processed_event, state.provider_mod, state.model, prov_state)
-
-            {prepend_chunks(new_chunks, chunks_acc), updated_prov_state}
-        end
-      end)
-
-    {Enum.reverse(stream_chunks), provider_state}
-  end
-
-  defp prepend_chunks(chunks, acc) do
-    Enum.reduce(chunks, acc, fn chunk, chunk_acc -> [chunk | chunk_acc] end)
-  end
-
-  defp decode_provider_event(event, provider_mod, model, provider_state) do
-    cond do
-      function_exported?(provider_mod, :decode_stream_event, 3) ->
-        provider_mod.decode_stream_event(event, model, provider_state)
-
-      function_exported?(provider_mod, :decode_stream_event, 2) ->
-        chunks = provider_mod.decode_stream_event(event, model)
-        {chunks, provider_state}
-
-      true ->
-        chunks = ReqLLM.Provider.Defaults.default_decode_stream_event(event, model)
-        {chunks, provider_state}
-    end
-  end
-
-  defp termination_event?(%{data: "[DONE]"}), do: true
-  defp termination_event?(%{data: %{"done" => true}}), do: true
-  defp termination_event?(%{data: %{"type" => "message_stop"}}), do: true
-  defp termination_event?(%{data: %{"type" => "response.completed"}}), do: true
-  defp termination_event?(_), do: false
-
-  defp terminal_chunk?(%ReqLLM.StreamChunk{type: :meta, metadata: metadata})
-       when is_map(metadata) do
-    Map.get(metadata, :terminal?) == true or Map.get(metadata, "terminal?") == true
-  end
-
-  defp terminal_chunk?(_chunk), do: false
 
   defp price_stream_usage(%{usage: usage} = metadata, state) do
     context =
@@ -1513,40 +1406,20 @@ defmodule ReqLLM.StreamServer do
     |> cancel_timeout_budgets()
   end
 
-  defp flush_provider_state(state) do
-    {flush_chunks, new_provider_state} =
-      if function_exported?(state.provider_mod, :flush_stream_state, 2) do
-        state.provider_mod.flush_stream_state(state.model, state.provider_state)
-      else
-        {[], state.provider_state}
-      end
-
-    state
-    |> Map.put(:provider_state, new_provider_state)
-    |> then(&enqueue_chunks(flush_chunks, &1))
-  end
-
   defp flush_stream_state(%{canonical_stream?: true} = state), do: state
 
   defp flush_stream_state(state) do
-    state |> flush_protocol_state() |> flush_provider_state()
-  end
+    {protocol_chunks, terminated?, decoder} = Decoder.flush_protocol(state.decoder)
 
-  defp flush_protocol_state(state) do
-    {events, new_protocol_state} = SSE.flush(state.protocol_state)
-    terminated? = Enum.any?(events, &termination_event?/1)
+    state =
+      enqueue_chunks(protocol_chunks, %{
+        state
+        | decoder: decoder,
+          terminated?: state.terminated? or terminated?
+      })
 
-    if events != [] do
-      {stream_chunks, new_provider_state} = decode_protocol_events(events, state)
-
-      state
-      |> Map.put(:provider_state, new_provider_state)
-      |> Map.put(:protocol_state, new_protocol_state)
-      |> Map.put(:terminated?, state.terminated? or terminated?)
-      |> then(&enqueue_chunks(stream_chunks, &1))
-    else
-      %{state | protocol_state: new_protocol_state}
-    end
+    {provider_chunks, decoder} = Decoder.flush_provider(state.decoder)
+    enqueue_chunks(provider_chunks, %{state | decoder: decoder})
   end
 
   defp finalize_stream_with_fixture(state) do
