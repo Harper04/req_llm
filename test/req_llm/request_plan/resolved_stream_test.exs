@@ -1,4 +1,4 @@
-defmodule ReqLLM.Streaming.RequestPlanParityTest do
+defmodule ReqLLM.RequestPlan.ResolvedStreamTest do
   use ExUnit.Case, async: true
 
   alias ReqLLM.Providers.{Anthropic, OpenAI}

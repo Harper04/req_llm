@@ -17,7 +17,8 @@ defmodule ReqLLM.Streaming do
 
   ## Flow
 
-  1. `start_stream/4` describes the provider-selected route with RequestPlan
+  1. `start_stream/4` describes the provider-selected route with RequestPlan and creates
+     StreamServer with its protocol parser, timeouts, and pricing context
   2. Runtime starts the selected transport on the existing StreamServer through the provider adapter
   3. HTTP task is attached to StreamServer for monitoring and cleanup
   4. StreamResponse provides lazy stream using `Stream.resource/3`
@@ -107,9 +108,10 @@ defmodule ReqLLM.Streaming do
 
   The function can fail at several points:
 
+  - RequestPlan rejects stream options or the selected transport
   - StreamServer fails to start
-  - Provider's build_stream_request/4 fails
-  - HTTP streaming task fails to start
+  - Provider's `attach_stream/4`, `attach_websocket_stream/3`, or `attach_in_process_stream/3` fails
+  - Transport task fails to start
   - Task attachment fails
 
   All failures return `{:error, reason}` with descriptive error information.
