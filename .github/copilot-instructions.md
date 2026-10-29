@@ -18,6 +18,7 @@
 - Use `mix test` for cached fixtures, `LIVE=true mix test` for live API calls
 - Tests use `ReqLLM.Test.LiveFixture.use_fixture/3` for fixture management
 - Run `mix quality` before committing
+- Follow the canonical test layout in [test/AGENTS.md](../test/AGENTS.md): unit and mocked tests in `test/req_llm/`, including `providers/`; opt-in integration in `test/integration/`; recorded/live provider coverage in `test/coverage/`; extension contracts in `test/contracts/`; release construction in `test/release/`; shared code in `test/support/`.
 
 ### Code Style
 - No inline comments in function bodies

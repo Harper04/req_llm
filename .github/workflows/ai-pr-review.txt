@@ -32,7 +32,7 @@ env:
     - Use TypedStruct for structured data and NimbleOptions for validating options.
     - Use Splode-based error types (ReqLLM.Error.API, .Parse, .Auth).
     - Keep imports minimal; prefer fully qualified module calls.
-    - Tests use three-tier architecture: test/req_llm/ (core), test/provider/ (mocked), test/coverage/ (live fixtures).
+    - Tests use the canonical v1.x layout: test/req_llm/ (unit and mocked, including providers/), test/integration/ (opt-in integration), test/coverage/ (recorded/live provider coverage), test/contracts/ (extension contracts), test/release/ (release construction), test/support/ (shared test code).
 
     Review priorities:
     1. Correctness - pattern matching, error handling, provider behavior callbacks

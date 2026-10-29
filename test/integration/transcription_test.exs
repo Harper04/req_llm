@@ -7,7 +7,7 @@ defmodule ReqLLM.Integration.TranscriptionTest do
 
   ## Running
 
-      GROQ_API_KEY=... OPENAI_API_KEY=... mix test --include integration test/req_llm/integration/transcription_test.exs
+      GROQ_API_KEY=... OPENAI_API_KEY=... mix test --include integration test/integration/transcription_test.exs
   """
 
   use ExUnit.Case, async: false

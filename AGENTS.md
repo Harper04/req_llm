@@ -56,11 +56,13 @@ ReqLLM uses structured key/value tags for precise test filtering:
 - `lib/req_llm.ex` - Main API facade with generate_text/3, stream_text/3, generate_object/4
 - `lib/req_llm/` - Core modules (Model, Provider, Error structures)
 - `lib/req_llm/providers/` - Provider-specific implementations (Anthropic, OpenAI, etc.)
-- `test/` - Three-tier testing architecture (see `test/AGENTS.md` for detailed testing guide)
-  - `test/req_llm/` - Core package tests (NO API calls, unit tests with mocks)
-  - `test/provider/` - Mocked provider-specific tests (NO API calls, tests provider nuances)
-  - `test/coverage/` - Live API coverage tests (fixture-based, high-level API only)
-  - `test/support/` - Shared helpers (live fixtures, HTTP mocks, test macros)
+- `test/` - Canonical v1.x test layout (see `test/AGENTS.md` for the detailed testing guide):
+  - `test/req_llm/`: normal unit and mocked tests, mirroring `lib/req_llm/`; provider tests live in `test/req_llm/providers/`.
+  - `test/integration/`: opt-in integration tests, excluded by default; run with `mix test test/integration/ --include integration`.
+  - `test/coverage/`: recorded and live provider coverage, excluded by default; replay with `mix test test/coverage/ --include coverage`.
+  - `test/contracts/`: extension contract tests.
+  - `test/release/`: release construction tests.
+  - `test/support/`: shared test code and fixtures.
 
 ### Core Data Structures
 - `ReqLLM.Context` - Conversation history as a collection of messages

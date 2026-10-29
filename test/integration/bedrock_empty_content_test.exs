@@ -13,7 +13,7 @@ defmodule ReqLLM.Integration.BedrockEmptyContentTest do
   Run with:
 
       aws-vault exec bedrock-test -- env AWS_REGION=us-east-1 REQ_LLM_FIXTURES_MODE=record \
-        mix test test/req_llm/integration/bedrock_empty_content_test.exs --include integration
+        mix test test/integration/bedrock_empty_content_test.exs --include integration
   """
 
   use ExUnit.Case, async: false

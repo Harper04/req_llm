@@ -7,13 +7,13 @@ defmodule ReqLLM.Integration.SpeechTest do
   ## Running
 
       # ElevenLabs TTS
-      ELEVENLABS_API_KEY=... mix test --include integration test/req_llm/integration/speech_test.exs
+      ELEVENLABS_API_KEY=... mix test --include integration test/integration/speech_test.exs
 
       # OpenAI TTS
-      OPENAI_API_KEY=... mix test --include integration test/req_llm/integration/speech_test.exs
+      OPENAI_API_KEY=... mix test --include integration test/integration/speech_test.exs
 
       # Both
-      ELEVENLABS_API_KEY=... OPENAI_API_KEY=... mix test --include integration test/req_llm/integration/speech_test.exs
+      ELEVENLABS_API_KEY=... OPENAI_API_KEY=... mix test --include integration test/integration/speech_test.exs
   """
 
   use ExUnit.Case, async: false

@@ -1,36 +1,37 @@
 # Testing Guide - ReqLLM
 
-Three-tier testing architecture for reliability and comprehensive coverage.
+## Canonical v1.x Test Layout
 
-## Test Tiers
+- `test/req_llm/`: normal unit and mocked tests, mirroring `lib/req_llm/`; provider tests live in `test/req_llm/providers/`.
+- `test/integration/`: opt-in integration tests, excluded by default; run with `mix test test/integration/ --include integration`.
+- `test/coverage/`: recorded and live provider coverage, excluded by default; replay with `mix test test/coverage/ --include coverage`.
+- `test/contracts/`: extension contract tests.
+- `test/release/`: release construction tests.
+- `test/support/`: shared test code and fixtures.
 
-### Tier 1: Core Tests (`test/req_llm/`)
-**NO API CALLS** - Pure unit tests with mocks
-- Model parsing, schema compilation, error handling, provider registry
+Normal unit and mocked tests make no live API calls. Provider tests cover
+parameter translation, response parsing, and codecs alongside other library tests.
+Coverage tests exercise the high-level API with recorded fixtures by default and
+live APIs when recording. They use the shared provider test macros.
 
-### Tier 2: Provider Tests (`test/providers/`)
-**NO API CALLS** - Mocked provider behavior testing
-- Parameter translation, response parsing, codec implementations
-- Example: OpenAI max_tokens → max_completion_tokens for o1 models
-
-### Tier 3: Coverage Tests (`test/coverage/`)
-**FIXTURE-BASED API CALLS** - High-level integration testing
-- Only test high-level API (`ReqLLM.generate_text/3`, `ReqLLM.stream_text/3`, etc.)
-- Fixtures replayed by default, re-recorded with `REQ_LLM_FIXTURES_MODE=record`
-- Uses shared provider test macros (`ReqLLM.ProviderTest.Core`, `ReqLLM.ProviderTest.Streaming`)
+`mix test` remains the normal test command. The default exclusions for
+`:integration` and `:coverage` are defined in `test/test_helper.exs`.
 
 ## Test Commands
 
 ### Path-Based Testing (Intentional)
 ```bash
-# Core package tests only (fast)
+# Normal unit and mocked tests, including providers
 mix test test/req_llm/
 
 # Provider mocked tests only  
-mix test test/providers/
+mix test test/req_llm/providers/
 
-# Coverage tests only
-mix test test/coverage/
+# Opt-in integration tests
+mix test test/integration/ --include integration
+
+# Recorded provider coverage
+mix test test/coverage/ --include coverage
 ```
 
 ### Tag-Based Testing

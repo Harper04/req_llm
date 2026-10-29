@@ -92,10 +92,10 @@ a streaming contract. Object tests need a separate object execution contract.
 
 Use `llm_db` 2026.9.1 or later to resolve `openai:gpt-6-astra`. Run the standard
 Astra fixtures and focused feature fixtures locally. The request tests in
-`test/providers/openai_astra_test.exs` run without API calls:
+`test/req_llm/providers/openai_astra_test.exs` run without API calls:
 
 ```bash
-mix test test/providers/openai_astra_test.exs
+mix test test/req_llm/providers/openai_astra_test.exs
 ```
 
 The [OpenAI Astra guide](https://developers.openai.com/api/docs/guides/latest-model?model=gpt-6-astra)

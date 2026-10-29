@@ -5,7 +5,7 @@
 - Implement a provider module under `lib/req_llm/providers/`, use `ReqLLM.Provider` + `Defaults`, and only override what the API actually deviates on.
 - The `Default` provider implementation is OpenAI Compatible.
 - Non-streaming requests run through Req with `attach/3` + `encode_body/1` + `decode_response/1`; streaming runs through Finch with `attach_stream/4` + `decode_stream_event/2` or `/3`.
-- Add models via `priv/models_local/` when you want shared registry coverage, then add tests using the three-tier strategy and record fixtures with `LIVE=true`. For one-off invocation or early development, ReqLLM can also use explicit model specs; see [Model Specs](model-specs.md).
+- Add models via `priv/models_local/` when you want shared registry coverage, then add tests using the canonical test layout and record fixtures with `LIVE=true`. For one-off invocation or early development, ReqLLM can also use explicit model specs; see [Model Specs](model-specs.md).
 
 For a provider that uses plain OpenAI Chat Completions with bearer
 authentication, LLMDB execution and runtime metadata can enable the shared
@@ -512,15 +512,24 @@ The registry enables:
 
 ## Testing Strategy
 
-ReqLLM uses a three-tier testing architecture:
+ReqLLM uses the canonical v1.x test layout:
 
-### 1. Core package tests (no API calls)
+- `test/req_llm/`: normal unit and mocked tests, mirroring `lib/req_llm/`; provider tests live in `test/req_llm/providers/`.
+- `test/integration/`: opt-in integration tests, excluded by default; run with `mix test test/integration/ --include integration`.
+- `test/coverage/`: recorded and live provider coverage, excluded by default; replay with `mix test test/coverage/ --include coverage`.
+- `test/contracts/`: extension contract tests.
+- `test/release/`: release construction tests.
+- `test/support/`: shared test code and fixtures.
+
+For provider development, add normal mocked tests and recorded coverage as follows:
+
+### Core package tests (no API calls)
 
 Under `test/req_llm/` for core types/helpers.
 
-### 2. Provider-specific tests (no API calls)
+### Provider-specific tests (no API calls)
 
-Under `test/providers/`, unit-testing your encoding/decoding and options behavior with small bodies.
+Under `test/req_llm/providers/`, unit-testing your encoding/decoding and options behavior with small bodies.
 
 **Example:**
 
@@ -547,7 +556,7 @@ defmodule Providers.AcmeTest do
 end
 ```
 
-### 3. Live API coverage tests
+### Recorded and live API coverage tests
 
 Under `test/coverage/` using the fixture system for integration against the high-level API.
 
@@ -825,7 +834,7 @@ mix req_llm.gen "Hello" --model acme:acme-chat-mini
 
 ### 4. Provider unit tests
 
-File: `test/providers/acme_test.exs`
+File: `test/req_llm/providers/acme_test.exs`
 
 ```elixir
 defmodule Providers.AcmeTest do

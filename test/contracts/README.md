@@ -42,7 +42,7 @@ fixture verifies that optional callbacks remain optional.
 
 Existing provider defaults and first-party implementations remain covered by
 `test/req_llm/provider/defaults_test.exs`, `test/req_llm/providers_test.exs`, and
-the provider tests under `test/providers/`. Live model matrices and recorded
+the provider tests under `test/req_llm/providers/`. Live model matrices and recorded
 provider responses remain compatibility evidence, but are not duplicated by
 this contract suite.
 
