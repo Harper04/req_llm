@@ -61,6 +61,63 @@ defmodule ReqLLM.WorkflowTelemetryTest do
     end
   end
 
+  test "video wait preserves per-poll lifecycle events and shared request correlation" do
+    Req.Test.verify_on_exit!()
+
+    Req.Test.expect(__MODULE__, fn conn ->
+      Req.Test.json(conn, %{"task" => %{"id" => "task-1", "status" => "running"}})
+    end)
+
+    Req.Test.expect(__MODULE__, fn conn ->
+      Req.Test.json(conn, response_body(:video_query))
+    end)
+
+    opts = [
+      api_key: "test-key",
+      req_http_options: [plug: {Req.Test, __MODULE__}],
+      poll_interval: 1,
+      timeout: 1_000
+    ]
+
+    assert {:ok, %ReqLLM.Video.Task{task_id: "task-1", status: :succeeded}} =
+             ReqLLM.Video.wait_video(@video_model, "task-1", opts)
+
+    [first_request_id, second_request_id] =
+      for _poll <- 1..2 do
+        assert_receive {:event, [:req_llm, :request, :start], start_measurements, start_meta}
+        assert_receive {:event, [:req_llm, :request, :stop], stop_measurements, stop_meta}
+        assert %{system_time: start_time} = start_measurements
+        assert is_integer(start_time)
+        assert Enum.sort(Map.keys(start_measurements)) == [:system_time]
+        assert %{duration: duration, system_time: stop_time} = stop_measurements
+        assert is_integer(duration) and duration >= 0
+        assert is_integer(stop_time)
+        assert Enum.sort(Map.keys(stop_measurements)) == [:duration, :system_time]
+
+        assert %{
+                 operation: :video_query,
+                 provider: :minimax,
+                 transport: :req,
+                 mode: :sync,
+                 request_id: request_id
+               } = start_meta
+
+        assert %{
+                 operation: :video_query,
+                 provider: :minimax,
+                 transport: :req,
+                 mode: :sync,
+                 http_status: 200,
+                 request_id: ^request_id
+               } = stop_meta
+
+        request_id
+      end
+
+    assert second_request_id == first_request_id
+    refute_received {:event, _, _, _}
+  end
+
   defp call(:rerank, opts) do
     ReqLLM.rerank("cohere:rerank-v3.5", [query: "rank", documents: ["one"]] ++ opts)
   end
